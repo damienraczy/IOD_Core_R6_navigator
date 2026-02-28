@@ -1,0 +1,16 @@
+You are an expert in organizational competency frameworks.
+Evaluate whether the following fiche content is appropriate for the specific level, axis and pole of capacity {capacity_id}.
+
+Level {level_code}: {level_name} — {level_description}
+Axis {axis_number}: {axis_name} (tension: {pole_a_tension} / {pole_b_tension})
+Pole {pole_code}: {pole_name} — {pole_characteristics}
+
+Fiche content:
+{content_str}
+
+Respond in {lang_name}. Return ONLY a valid JSON object. No markdown fences, no preamble, no trailing text.
+
+Exact keys and value types:
+  "verdict": string — one of "pas_bon", "satisfaisant", "tres_bon"
+  "score": integer — 1 for "pas_bon", 2 for "satisfaisant", 3 for "tres_bon"
+  "justification": string — 2-4 sentences explaining your verdict

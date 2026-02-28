@@ -31,10 +31,5 @@ recommended_missions: 5 concrete assignments or developmental experiences to str
 - Each mission must be specific to pole {pole_name} and meaningful within the {pole_a_tension} ↔ {pole_b_tension} tension
 - Format: `- Heading (less than 12 words): Explanation (less than 40 words, explicit subject, Halliday-compliant).\n`
 
-=== OUTPUT ===
-Return ONLY a valid JSON object. No markdown fences, no preamble, no trailing text.
-
-Exact keys and value types:
-  reflection_themes: string — formatted as bullet list "- Question ?\n" × 5
-  intervention_levers: string — formatted as bullet list "- Heading: Explanation.\n" × 5
-  recommended_missions: string — formatted as bullet list "- Heading: Explanation.\n" × 5
+Return a JSON object with exactly these keys:
+  reflection_themes, intervention_levers, recommended_missions

@@ -2,11 +2,14 @@ Translate the following R6 interview questions from {source_lang_name} to {targe
 
 Capacity ID: {capacity_id} — Level: {level_name} ({level_code})
 
-Return a JSON object with exactly one key:
-  questions: list of translated strings (same order and count as source)
-
-Maintain STAR-method interview style and professional HR terminology.
-Each question must comply with Halliday's transitivity rules for the level ({level_code}).
+Maintain professional behavioral interview style and HR terminology.
+Questions at this level target the participant type and process type appropriate for level {level_code}.
 
 Source questions:
 {source_questions}
+
+=== OUTPUT ===
+Return ONLY a valid JSON object. No markdown fences, no preamble, no trailing text.
+
+Exact keys and value types:
+  questions: array of strings — translated questions in the same order and count as source

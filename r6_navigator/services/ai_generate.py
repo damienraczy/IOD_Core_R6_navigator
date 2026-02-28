@@ -80,6 +80,8 @@ def generate_fiche(capacity_id: str, lang: str) -> GeneratedContent:
     axis_info = ontology["axes"][int(axis_number)]
     pole_info = ontology["poles"][pole_code]
 
+    halliday_context = _halliday_context_for_level(_load_halliday_spec(), level_code)
+
     lang_name = "French" if lang == "fr" else "US English"
     user_prompt = load_prompt(
         "generate_fiche",
@@ -92,6 +94,7 @@ def generate_fiche(capacity_id: str, lang: str) -> GeneratedContent:
         pole_name=pole_info["name"],
         pole_code=pole_code,
         canonical_name=canonical_name,
+        halliday_context=halliday_context,
     )
 
     raw = _call_ollama(url, model, system_prompt, user_prompt, timeout)
@@ -130,6 +133,9 @@ def generate_questions(capacity_id: str, lang: str) -> GeneratedQuestions:
     axis_info = ontology["axes"][int(axis_number)]
     pole_info = ontology["poles"][pole_code]
 
+    halliday_context = _halliday_context_for_level(_load_halliday_spec(), level_code)
+    interview_rules = _load_interview_rules(level_code)
+
     lang_name = "French" if lang == "fr" else "US English"
     user_prompt = load_prompt(
         "generate_questions",
@@ -142,6 +148,12 @@ def generate_questions(capacity_id: str, lang: str) -> GeneratedQuestions:
         pole_name=pole_info["name"],
         pole_code=pole_code,
         canonical_name=canonical_name,
+        halliday_context=halliday_context,
+        interview_target=interview_rules["interview_target"],
+        participant_1=interview_rules["participant_1"],
+        process_type=interview_rules["process_type"],
+        participant_2=interview_rules["participant_2"],
+        proscription=interview_rules["proscription"],
     )
 
     raw = _call_ollama(url, model, system_prompt, user_prompt, timeout)
@@ -180,6 +192,8 @@ def generate_coaching(capacity_id: str, lang: str) -> GeneratedCoaching:
     axis_info = ontology["axes"][int(axis_number)]
     pole_info = ontology["poles"][pole_code]
 
+    halliday_context = _halliday_context_for_level(_load_halliday_spec(), level_code)
+
     lang_name = "French" if lang == "fr" else "US English"
     user_prompt = load_prompt(
         "generate_coaching",
@@ -187,11 +201,16 @@ def generate_coaching(capacity_id: str, lang: str) -> GeneratedCoaching:
         capacity_id=capacity_id,
         level_name=level_info["name"],
         level_code=level_code,
+        level_description=level_info["description"],
         axis_name=axis_info["name"],
         axis_number=axis_number,
+        pole_a_tension=axis_info["tension"]["pole_a"],
+        pole_b_tension=axis_info["tension"]["pole_b"],
         pole_name=pole_info["name"],
         pole_code=pole_code,
+        pole_characteristics=pole_info["characteristics"],
         canonical_name=canonical_name,
+        halliday_context=halliday_context,
     )
 
     raw = _call_ollama(url, model, system_prompt, user_prompt, timeout)
@@ -422,6 +441,69 @@ def _load_axioms() -> dict:
         return yaml.safe_load(f)
 
 
+def _load_interview_rules(level_code: str) -> dict:
+    """Charge les paramètres d'entretien spécifiques au niveau depuis interview_rules.json."""
+    rules_path = Path(__file__).parent / "prompt" / "interview_rules.json"
+    with open(rules_path, encoding="utf-8") as f:
+        data = json.load(f)
+    return data[level_code]
+
+
+def _load_halliday_spec() -> str:
+    spec_path = _PROJECT_ROOT / "R6" / "Halliday.md"
+    try:
+        with open(spec_path, encoding="utf-8") as f:
+            return f.read()
+    except FileNotFoundError:
+        return ""
+
+
+_HALLIDAY_LEVEL_MARKER = {
+    "I": "### 2.1.",
+    "O": "### 2.2.",
+    "S": "### 2.3.",
+}
+
+
+def _halliday_context_for_level(spec: str, level_code: str) -> str:
+    """Extrait les règles Halliday pertinentes pour un niveau R6 donné."""
+    if not spec:
+        return "(Halliday specification not available)"
+
+    import re as _re
+
+    parts: list[str] = []
+
+    marker = _HALLIDAY_LEVEL_MARKER.get(level_code, "")
+    if marker:
+        idx = spec.find(marker)
+        if idx != -1:
+            after = spec[idx:]
+            boundary = _re.search(r"\n(?:###|---)", after[1:])
+            if boundary:
+                section = after[: boundary.start() + 1].strip()
+            else:
+                section = after.strip()
+            parts.append(section)
+
+    for line in spec.splitlines():
+        if f"**{level_code} " in line or f"| **{level_code}" in line:
+            parts.append(f"Summary for level {level_code}:\n{line.strip()}")
+            break
+
+    audit_idx = spec.find("## 4.")
+    if audit_idx != -1:
+        after_audit = spec[audit_idx:]
+        next_section = _re.search(r"\n## ", after_audit[1:])
+        if next_section:
+            audit_section = after_audit[: next_section.start() + 1].strip()
+        else:
+            audit_section = after_audit.strip()
+        parts.append(audit_section)
+
+    return "\n\n".join(parts)
+
+
 def _load_canonical_name(capacity_id: str, lang: str) -> str:
     names_path = _PACKAGE_DIR / f"capacities_{lang}.yml"
     try:
@@ -459,13 +541,45 @@ def _call_ollama(url: str, model: str, system: str, prompt: str, timeout: int) -
         raise RuntimeError(f"Unexpected Ollama response format: {e}") from e
 
 
+def _fix_json_strings(text: str) -> str:
+    """Escapes literal newlines and tabs inside JSON string values.
+
+    LLMs sometimes emit raw line-breaks inside string literals, which is
+    invalid JSON. This function walks the text character by character and
+    replaces bare ``\\n`` / ``\\r`` / ``\\t`` characters found inside a JSON
+    string (between unescaped double-quotes) with their escaped equivalents.
+    """
+    result: list[str] = []
+    in_string = False
+    escape_next = False
+    for ch in text:
+        if escape_next:
+            result.append(ch)
+            escape_next = False
+        elif ch == "\\" and in_string:
+            result.append(ch)
+            escape_next = True
+        elif ch == '"':
+            in_string = not in_string
+            result.append(ch)
+        elif in_string and ch == "\n":
+            result.append("\\n")
+        elif in_string and ch == "\r":
+            pass  # discard bare carriage-returns inside strings
+        elif in_string and ch == "\t":
+            result.append("\\t")
+        else:
+            result.append(ch)
+    return "".join(result)
+
+
 def _strip_markdown_json(text: str) -> str:
-    """Removes optional ```json ... ``` or ``` ... ``` wrapper from model output."""
+    """Removes optional ```json ... ``` wrapper and fixes bare newlines in strings."""
     text = text.strip()
     match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", text)
     if match:
-        return match.group(1).strip()
-    return text
+        text = match.group(1).strip()
+    return _fix_json_strings(text)
 
 
 def _cap_bullets(value, max_items: int = 5) -> str:
@@ -511,7 +625,7 @@ def _parse_response(raw: str, capacity_id: str) -> GeneratedContent:
 
     return GeneratedContent(
         name=_to_str(data.get("name"), fallback=capacity_id),
-        definition=_to_str(data.get("definition")),
+        definition=_cap_bullets(data.get("definition", "")),
         central_function=_to_str(data.get("central_function")),
         observable=_cap_bullets(data.get("observable", "")),
         risk_insufficient=_cap_bullets(data.get("risk_insufficient", "")),
@@ -618,6 +732,8 @@ def _parse_questions_response(raw: str) -> GeneratedQuestions:
 
     # Normalise les items observables par catégorie, cap à 5 par catégorie.
     raw_items = data.get("observable_items", {})
+    if not isinstance(raw_items, dict):
+        raw_items = {}
     observable_items: dict[str, list[str]] = {}
     for code in ("OK", "EXC", "DEP", "INS"):
         raw_cat = raw_items.get(code, [])

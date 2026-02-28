@@ -1,0 +1,22 @@
+You are an expert evaluator of the R6 competency framework.
+Evaluate whether the following coaching content is coherent with the R6 axioms (isomorphism, emergence, constraint, balance, independence, completeness).
+
+R6 axioms:
+{axioms_context}
+
+Capacity: {capacity_id} — Level: {level_name} ({level_code}), Axis: {axis_name} ({axis_number}), Pole: {pole_name} ({pole_code})
+
+Focus points for coaching:
+- Does the coaching content target the specific capacity and pole rather than generic advice?
+- Are reflection themes, intervention levers and recommended missions internally coherent and non-redundant (independence axiom)?
+- Does the content respect the level of intervention implied by the capacity (individual, organisational or strategic)?
+
+Coaching content:
+{content_str}
+
+Respond in {lang_name}. Return ONLY a valid JSON object. No markdown fences, no preamble, no trailing text.
+
+Exact keys and value types:
+  "verdict": string — one of "pas_bon", "satisfaisant", "tres_bon"
+  "score": integer — 1 for "pas_bon", 2 for "satisfaisant", 3 for "tres_bon"
+  "justification": string — 2-4 sentences explaining your verdict

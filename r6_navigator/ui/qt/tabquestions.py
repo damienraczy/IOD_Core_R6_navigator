@@ -67,6 +67,36 @@ class _GenerateWorker(QThread):
 
 
 # ────────────────────────────────────────────────────────────
+# Worker d'évaluation par 3 juges LLM (thread de fond)
+# ────────────────────────────────────────────────────────────
+
+class _JudgeWorker(QThread):
+    """Thread de fond pour l'appel aux 3 juges LLM — questions et items observables.
+
+    Signals:
+        results_ready: Émis avec un objet JudgeResults en cas de succès.
+        error: Émis avec le message d'erreur en cas d'échec.
+    """
+
+    results_ready = Signal(object)  # JudgeResults
+    error = Signal(str)
+
+    def __init__(self, content: dict, capacity_id: str, lang: str) -> None:
+        super().__init__()
+        self._content = content
+        self._capacity_id = capacity_id
+        self._lang = lang
+
+    def run(self) -> None:
+        try:
+            from r6_navigator.services.ai_judge import judge_questions
+            results = judge_questions(self._content, self._capacity_id, self._lang)
+            self.results_ready.emit(results)
+        except Exception as exc:
+            self.error.emit(str(exc))
+
+
+# ────────────────────────────────────────────────────────────
 # Widget ligne de question
 # ────────────────────────────────────────────────────────────
 
@@ -207,6 +237,21 @@ class TabQuestions(QWidget, Ui_TabQuestions):
         self._deleted_question_ids: list[int] = []
         self._deleted_item_ids: list[int] = []
         self._worker: _GenerateWorker | None = None
+
+        # Juge LLM
+        self._original_snapshot: dict | None = None
+        self._judge_worker: _JudgeWorker | None = None
+        self._verification_window = None  # VerificationWindow, created on first use
+
+        # Bouton [Juger] ajouté programmatiquement sous le tableau des items
+        judge_bar = QWidget()
+        judge_layout = QHBoxLayout(judge_bar)
+        judge_layout.setContentsMargins(12, 4, 12, 4)
+        self.btn_juger = QPushButton()
+        judge_layout.addStretch()
+        judge_layout.addWidget(self.btn_juger)
+        self.main_layout.addWidget(judge_bar)
+
         self._setup_connections()
         self._retranslate()
 
@@ -228,12 +273,17 @@ class TabQuestions(QWidget, Ui_TabQuestions):
         Args:
             capacity: Objet ORM de la capacité à afficher.
         """
+        if self._verification_window is not None:
+            self._verification_window.clear_history()
+
         self._current_capacity = capacity
         self._editing = False
         self._dirty = False
         self._deleted_question_ids.clear()
         self._deleted_item_ids.clear()
         self._load_all()
+
+        self._original_snapshot = self._take_snapshot()
 
     def set_edit_mode(self, editing: bool) -> None:
         """Active ou désactive le mode édition sur les questions et le tableau des items.
@@ -316,6 +366,8 @@ class TabQuestions(QWidget, Ui_TabQuestions):
 
         self._dirty = False
         self.dirty_changed.emit(False)
+        if self._verification_window is not None:
+            self._verification_window.clear_history()
 
     def discard(self) -> None:
         """Annule les modifications en cours en rechargeant les données depuis la base."""
@@ -335,8 +387,9 @@ class TabQuestions(QWidget, Ui_TabQuestions):
     # ────────────────────────────────────────────────────────
 
     def _setup_connections(self) -> None:
-        """Connecte les boutons d'ajout, de génération et le signal de modification du tableau."""
+        """Connecte les boutons d'ajout, de génération, de jugement et le signal de modification du tableau."""
         self.btn_generer.clicked.connect(self._on_generate)
+        self.btn_juger.clicked.connect(self._on_juger_clicked)
         self.btn_new_question.clicked.connect(self._add_new_question)
         self.btn_new_item.clicked.connect(self._add_new_item)
         self.table_observable_items.itemChanged.connect(self._on_table_item_changed)
@@ -344,6 +397,7 @@ class TabQuestions(QWidget, Ui_TabQuestions):
     def _retranslate(self) -> None:
         """Met à jour tous les libellés de l'onglet selon la langue active."""
         self.btn_generer.setText(t("btn.generate"))
+        self.btn_juger.setText(t("btn.judge"))
         self.lbl_questions_title.setText(t("questions.section_title"))
         self.btn_new_question.setText(t("questions.new"))
         self.lbl_items_title.setText(t("questions.items_title"))
@@ -722,6 +776,130 @@ class TabQuestions(QWidget, Ui_TabQuestions):
         self.btn_generer.setEnabled(True)
         self._worker = None
         QMessageBox.warning(self, t("error.generate"), message)
+
+    # ────────────────────────────────────────────────────────
+    # Évaluation par 3 juges LLM
+    # ────────────────────────────────────────────────────────
+
+    def _take_snapshot(self) -> dict:
+        """Capture l'état courant des questions et items sous forme de snapshot.
+
+        Returns:
+            Dictionnaire avec ``capacity_id``, ``questions`` et ``observable_items``.
+        """
+        capacity_id = (
+            self._current_capacity.capacity_id if self._current_capacity else ""
+        )
+        return {
+            "capacity_id": capacity_id,
+            "questions": [
+                {"question_id": row.question_id, "text": row.get_text()}
+                for row in self._question_rows
+            ],
+            "observable_items": [
+                {
+                    "item_id": item["item_id"],
+                    "category_code": item["category_code"],
+                    "text": item["text"],
+                }
+                for item in self._item_data
+            ],
+        }
+
+    def _to_llm_content(self, snapshot: dict) -> dict:
+        """Extrait le contenu texte uniquement depuis un snapshot pour l'envoi au LLM.
+
+        Args:
+            snapshot: Snapshot retourné par _take_snapshot().
+
+        Returns:
+            Dictionnaire avec ``questions`` (liste de textes) et
+            ``observable_items`` (dict catégorie → liste de textes).
+        """
+        questions = [q["text"] for q in snapshot.get("questions", [])]
+        items_by_cat: dict[str, list[str]] = {}
+        for item in snapshot.get("observable_items", []):
+            cat = item["category_code"]
+            items_by_cat.setdefault(cat, []).append(item["text"])
+        return {"questions": questions, "observable_items": items_by_cat}
+
+    def _on_juger_clicked(self) -> None:
+        """Lance l'évaluation par 3 juges LLM si aucune n'est déjà en cours."""
+        if self._current_capacity is None:
+            return
+        if self._judge_worker is not None and self._judge_worker.isRunning():
+            return
+
+        snapshot = self._take_snapshot()
+        self.btn_juger.setEnabled(False)
+        self.btn_juger.setText(t("judge.running"))
+
+        if self._verification_window is None:
+            from r6_navigator.ui.qt.verification_window import VerificationWindow
+            self._verification_window = VerificationWindow(self)
+            self._verification_window.restore_version.connect(self._restore_version)
+
+        self._verification_window.show_running()
+
+        llm_content = self._to_llm_content(snapshot)
+        self._judge_worker = _JudgeWorker(
+            llm_content, self._current_capacity.capacity_id, current_lang()
+        )
+        self._judge_worker.results_ready.connect(
+            lambda results: self._on_judge_results(snapshot, results)
+        )
+        self._judge_worker.error.connect(self._on_judge_error)
+        self._judge_worker.start()
+
+    def _on_judge_results(self, snapshot: dict, results) -> None:
+        """Reçoit les résultats des juges et les affiche dans la VerificationWindow.
+
+        Args:
+            snapshot: Snapshot capturé au moment du clic sur [Juger].
+            results: Objet JudgeResults retourné par judge_questions().
+        """
+        self.btn_juger.setEnabled(True)
+        self.btn_juger.setText(t("btn.judge"))
+        if self._verification_window is not None:
+            self._verification_window.add_version(snapshot, results)
+        self._judge_worker = None
+
+    def _on_judge_error(self, message: str) -> None:
+        """Affiche une erreur de jugement et réactive le bouton Juger.
+
+        Args:
+            message: Description de l'erreur retournée par le worker.
+        """
+        self.btn_juger.setEnabled(True)
+        self.btn_juger.setText(t("btn.judge"))
+        if self._verification_window is not None:
+            self._verification_window.hide()
+        QMessageBox.warning(self, t("judge.error", message=message), message)
+        self._judge_worker = None
+
+    def _restore_version(self, content: dict) -> None:
+        """Réinjecte un snapshot dans les listes de questions et d'items observables.
+
+        Appelé par le signal ``restore_version`` de VerificationWindow.
+
+        Args:
+            content: Snapshot dict retourné par _take_snapshot().
+        """
+        q_data = [
+            (q.get("question_id"), q.get("text", ""))
+            for q in content.get("questions", [])
+        ]
+        self._rebuild_question_rows(q_data)
+
+        self._item_data = [
+            {
+                "item_id": item.get("item_id"),
+                "category_code": item.get("category_code", _CATEGORY_CODES[0]),
+                "text": item.get("text", ""),
+            }
+            for item in content.get("observable_items", [])
+        ]
+        self._rebuild_items_table()
 
     # ────────────────────────────────────────────────────────
 

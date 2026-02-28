@@ -1,0 +1,14 @@
+Translate the following R6 coaching content from {source_lang_name} to {target_lang_name}.
+
+Capacity ID: {capacity_id} — Level: {level_name} ({level_code})
+
+Return a JSON object with exactly these keys:
+  reflection_themes, intervention_levers, recommended_missions
+
+Each field is a bullet list in `- heading : explanation.\n` format.
+Preserve this format in the translation.
+Heading must begin with a verb, use ellipsis of subject, less than 15 words.
+Explanation must be less than 45 words.
+
+Source content:
+{source_content}

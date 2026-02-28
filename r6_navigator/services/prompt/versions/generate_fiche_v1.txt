@@ -1,0 +1,16 @@
+Generate professional R6 content for the following capacity.
+Respond in {lang_name}.
+
+Capacity ID: {capacity_id}
+Level: {level_name} ({level_code})
+Axis: {axis_name} ({axis_number})
+Pole: {pole_name} ({pole_code})
+Canonical name: {canonical_name}
+
+Return a JSON object with exactly these keys:
+  name, definition, central_function, observable, risk_insufficient, risk_excessive
+
+For definition: A set of 5 sentences, compliance with Halliday's rules, less than 20 words each, ellipsis of the subject, in list `- phrase\n`
+For central_function : Three sentences providing a clear explanation, useful for executives and top managers, compliance with Halliday's rules
+
+For observable, risk_insufficient, risk_excessive: A set of 5 sentences, compliance with Halliday's rules, less than 20 words each, in list `- phrase\n`.

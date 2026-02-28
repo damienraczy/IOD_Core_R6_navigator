@@ -55,6 +55,46 @@ class JudgeResults:
 # ---------------------------------------------------------------------------
 
 
+def judge_questions(content: dict, capacity_id: str, lang: str) -> JudgeResults:
+    """Évalue les questions STAR et items observables via 3 juges LLM en parallèle.
+
+    Args:
+        content: Dictionnaire avec les clés ``questions`` (liste de textes) et
+            ``observable_items`` (dict catégorie → liste de textes).
+        capacity_id: Identifiant de la capacité (ex. ``"I1a"``).
+        lang: Langue active (``"fr"`` ou ``"en"``).
+
+    Returns:
+        JudgeResults agrégés des 3 juges.
+    """
+    return _run_judges(
+        content=content,
+        capacity_id=capacity_id,
+        lang=lang,
+        prompt_names=("judge_questions_axioms", "judge_questions_halliday", "judge_questions_coherence"),
+    )
+
+
+def judge_coaching(content: dict, capacity_id: str, lang: str) -> JudgeResults:
+    """Évalue le contenu coaching via 3 juges LLM en parallèle.
+
+    Args:
+        content: Dictionnaire avec les clés ``reflection_themes``,
+            ``intervention_levers``, ``recommended_missions``.
+        capacity_id: Identifiant de la capacité (ex. ``"I1a"``).
+        lang: Langue active (``"fr"`` ou ``"en"``).
+
+    Returns:
+        JudgeResults agrégés des 3 juges.
+    """
+    return _run_judges(
+        content=content,
+        capacity_id=capacity_id,
+        lang=lang,
+        prompt_names=("judge_coaching_axioms", "judge_coaching_halliday", "judge_coaching_coherence"),
+    )
+
+
 def judge_fiche(content: dict, capacity_id: str, lang: str) -> JudgeResults:
     """Évalue une fiche R6 via 3 juges LLM tournant en parallèle.
 
@@ -64,6 +104,41 @@ def judge_fiche(content: dict, capacity_id: str, lang: str) -> JudgeResults:
             ``risk_insufficient``, ``risk_excessive``.
         capacity_id: Identifiant de la capacité (ex. ``"I1a"``).
         lang: Langue active (``"fr"`` ou ``"en"``).
+
+    Returns:
+        JudgeResults agrégés des 3 juges.
+    """
+    return _run_judges(
+        content=content,
+        capacity_id=capacity_id,
+        lang=lang,
+        prompt_names=("judge_fiche_axioms", "judge_fiche_halliday", "judge_fiche_coherence"),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Internal helpers
+# ---------------------------------------------------------------------------
+
+
+def _run_judges(
+    content: dict,
+    capacity_id: str,
+    lang: str,
+    prompt_names: tuple[str, str, str],
+) -> JudgeResults:
+    """Logique commune aux trois fonctions publiques de jugement.
+
+    Charge la configuration, construit les 3 prompts à partir des fichiers
+    indiqués dans ``prompt_names``, lance les appels Ollama en parallèle et
+    agrège les résultats.
+
+    Args:
+        content: Dictionnaire du contenu à évaluer (sérialisé en JSON pour le LLM).
+        capacity_id: Identifiant de la capacité (ex. ``"I1a"``).
+        lang: Langue active (``"fr"`` ou ``"en"``).
+        prompt_names: Triplet (axioms_prompt, halliday_prompt, coherence_prompt)
+            correspondant aux noms des fichiers .txt dans services/prompt/.
 
     Returns:
         JudgeResults agrégés des 3 juges.
@@ -85,70 +160,45 @@ def judge_fiche(content: dict, capacity_id: str, lang: str) -> JudgeResults:
     pole_info = ontology["poles"][pole_code]
     principles = ontology["fundamental_principles"]
 
-    content_str = json.dumps(content, ensure_ascii=False, indent=2)
-
-    # ---- Variables communes aux 3 juges ------------------------------------
-
     lang_name = "French" if lang == "fr" else "US English"
     content_str = json.dumps(content, ensure_ascii=False, indent=2)
 
-    # ---- Prompts des 3 juges ------------------------------------------------
+    # ---- Variables communes injectées dans les 3 prompts -------------------
 
     axioms_context = "\n".join(
         f"- {k}: {v}"
         for k, v in principles.items()
         if k != "linguistic_differentiation"
     )
-    prompt_axioms = load_prompt(
-        "judge_axioms",
-        axioms_context=axioms_context,
-        capacity_id=capacity_id,
-        level_name=level_info["name"],
-        level_code=level_code,
-        axis_name=axis_info["name"],
-        axis_number=axis_number,
-        pole_name=pole_info["name"],
-        pole_code=pole_code,
-        content_str=content_str,
-        lang_name=lang_name,
-    )
-
     halliday_spec = _load_halliday_spec()
     halliday_context = _halliday_context_for_level(halliday_spec, level_code)
-    prompt_halliday = load_prompt(
-        "judge_halliday",
-        level_code=level_code,
-        level_name=level_info["name"],
-        halliday_context=halliday_context,
-        capacity_id=capacity_id,
-        axis_name=axis_info["name"],
-        axis_number=axis_number,
-        pole_name=pole_info["name"],
-        pole_code=pole_code,
-        content_str=content_str,
-        lang_name=lang_name,
-    )
 
-    prompt_coherence = load_prompt(
-        "judge_coherence",
+    common_vars = dict(
+        axioms_context=axioms_context,
+        halliday_context=halliday_context,
         capacity_id=capacity_id,
         level_name=level_info["name"],
         level_code=level_code,
         level_description=level_info["description"],
-        axis_number=axis_number,
         axis_name=axis_info["name"],
+        axis_number=axis_number,
         pole_a_tension=axis_info["tension"]["pole_a"],
         pole_b_tension=axis_info["tension"]["pole_b"],
-        pole_code=pole_code,
         pole_name=pole_info["name"],
+        pole_code=pole_code,
         pole_characteristics=pole_info["characteristics"],
         content_str=content_str,
         lang_name=lang_name,
     )
 
+    name_axioms, name_halliday, name_coherence = prompt_names
+    prompt_axioms = load_prompt(name_axioms, **common_vars)
+    prompt_halliday = load_prompt(name_halliday, **common_vars)
+    prompt_coherence = load_prompt(name_coherence, **common_vars)
+
     # ---- Appels parallèles --------------------------------------------------
 
-    results: dict[str, SingleJudgeResult] = {}
+    judge_results: dict[str, SingleJudgeResult] = {}
     lock = threading.Lock()
 
     def run_judge(judge_key: str, judge_name: str, prompt: str) -> None:
@@ -164,7 +214,7 @@ def judge_fiche(content: dict, capacity_id: str, lang: str) -> JudgeResults:
                 error=str(exc),
             )
         with lock:
-            results[judge_key] = result
+            judge_results[judge_key] = result
 
     threads = [
         threading.Thread(
@@ -188,9 +238,9 @@ def judge_fiche(content: dict, capacity_id: str, lang: str) -> JudgeResults:
     for t in threads:
         t.join()
 
-    judge_axioms = results["axioms"]
-    judge_halliday = results["halliday"]
-    judge_coherence = results["coherence"]
+    judge_axioms = judge_results["axioms"]
+    judge_halliday = judge_results["halliday"]
+    judge_coherence = judge_results["coherence"]
 
     aggregate_score = (
         judge_axioms.score + judge_halliday.score + judge_coherence.score
@@ -205,7 +255,6 @@ def judge_fiche(content: dict, capacity_id: str, lang: str) -> JudgeResults:
     verdict_counts: dict[str, int] = {}
     for v in verdicts_list:
         verdict_counts[v] = verdict_counts.get(v, 0) + 1
-    # En cas d'égalité (tous différents), on prend le pire.
     max_count = max(verdict_counts.values())
     majority_candidates = [v for v, c in verdict_counts.items() if c == max_count]
     if len(majority_candidates) == 1:
@@ -221,11 +270,6 @@ def judge_fiche(content: dict, capacity_id: str, lang: str) -> JudgeResults:
         aggregate_verdict=aggregate_verdict,
         aggregate_score=aggregate_score,
     )
-
-
-# ---------------------------------------------------------------------------
-# Internal helpers
-# ---------------------------------------------------------------------------
 
 
 def _load_params() -> dict:
@@ -339,14 +383,40 @@ def _call_ollama(url: str, model: str, system: str, prompt: str, timeout: int) -
         raise RuntimeError(f"Unexpected Ollama response format: {e}") from e
 
 
+def _fix_json_strings(text: str) -> str:
+    """Escapes literal newlines and tabs inside JSON string values."""
+    result: list[str] = []
+    in_string = False
+    escape_next = False
+    for ch in text:
+        if escape_next:
+            result.append(ch)
+            escape_next = False
+        elif ch == "\\" and in_string:
+            result.append(ch)
+            escape_next = True
+        elif ch == '"':
+            in_string = not in_string
+            result.append(ch)
+        elif in_string and ch == "\n":
+            result.append("\\n")
+        elif in_string and ch == "\r":
+            pass
+        elif in_string and ch == "\t":
+            result.append("\\t")
+        else:
+            result.append(ch)
+    return "".join(result)
+
+
 def _strip_markdown_json(text: str) -> str:
     import re
 
     text = text.strip()
     match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", text)
     if match:
-        return match.group(1).strip()
-    return text
+        text = match.group(1).strip()
+    return _fix_json_strings(text)
 
 
 def _parse_judge_response(raw: str, judge_name: str) -> SingleJudgeResult:

@@ -63,9 +63,8 @@ For each of the 4 categories (OK, DEP, EXC, INS), generate exactly 5 observable 
 5. INTEGRATION: How the capacity interfaces or aligns with other entities/systems.
 
 === OUTPUT ===
-Return ONLY a valid JSON object. No markdown fences, no preamble, no trailing text.
 
-Exact keys and value types:
-  questions: array of 10 strings (interview questions)
-  observable_items: object with exactly 4 keys, each an array of 5 strings:
+Return a JSON object with exactly these keys:
+  questions: a list of 10 strings (interview questions)
+  observable_items: an object with exactly these 4 keys, each containing a list of 5 strings:
     OK, DEP, EXC, INS

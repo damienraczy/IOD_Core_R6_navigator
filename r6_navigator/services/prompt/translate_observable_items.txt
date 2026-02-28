@@ -2,11 +2,20 @@ Translate the following R6 observable behavioral manifestations from {source_lan
 
 Capacity ID: {capacity_id} — Level: {level_name} ({level_code})
 
-Return a JSON object with these keys: OK, DEP, EXC, INS
-(only include keys present in the source).
-Each key maps to a list of translated strings (same order and count as source).
-
-Each string must comply with Halliday's transitivity rules for the level ({level_code}), remain less than 20 words, and use ellipsis of the subject.
+Each translated string must:
+- Comply with Halliday's transitivity rules for the level ({level_code})
+- Remain less than 20 words
+- Include the explicit level-appropriate subject (no ellipsis)
 
 Source items:
 {source_items}
+
+=== OUTPUT ===
+Return ONLY a valid JSON object. No markdown fences, no preamble, no trailing text.
+Only include keys present in the source.
+
+Exact keys and value types:
+  OK: array of strings (same order and count as source)
+  DEP: array of strings (same order and count as source)
+  EXC: array of strings (same order and count as source)
+  INS: array of strings (same order and count as source)

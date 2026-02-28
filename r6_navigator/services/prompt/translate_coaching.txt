@@ -2,13 +2,20 @@ Translate the following R6 coaching content from {source_lang_name} to {target_l
 
 Capacity ID: {capacity_id} — Level: {level_name} ({level_code})
 
-Return a JSON object with exactly these keys:
-  reflection_themes, intervention_levers, recommended_missions
-
-Each field is a bullet list in `- heading : explanation.\n` format.
-Preserve this format in the translation.
-Heading must begin with a verb, use ellipsis of subject, less than 15 words.
-Explanation must be less than 45 words.
+Translation rules:
+- Preserve all bullet list formats
+- reflection_themes: open coaching questions ending with "?"
+- intervention_levers and recommended_missions: "- Heading: Explanation." format
+  - Heading: begin with the explicit level-appropriate subject and a process verb, less than 15 words
+  - Explanation: less than 45 words, include the explicit level-appropriate subject
 
 Source content:
 {source_content}
+
+=== OUTPUT ===
+Return ONLY a valid JSON object. No markdown fences, no preamble, no trailing text.
+
+Exact keys and value types:
+  reflection_themes: string — bullet list "- Question ?\n" × 5
+  intervention_levers: string — bullet list "- Heading: Explanation.\n" × 5
+  recommended_missions: string — bullet list "- Heading: Explanation.\n" × 5
