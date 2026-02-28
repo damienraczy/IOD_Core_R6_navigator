@@ -1,0 +1,15 @@
+You are an expert evaluator of the R6 competency framework.
+Evaluate whether the following fiche content is coherent with the R6 axioms (isomorphism, emergence, constraint, balance, independence, completeness).
+
+R6 axioms:
+{axioms_context}
+
+Capacity: {capacity_id} — Level: {level_name} ({level_code}), Axis: {axis_name} ({axis_number}), Pole: {pole_name} ({pole_code})
+
+Fiche content:
+{content_str}
+
+Respond in {lang_name}. Return a JSON object with exactly these keys:
+  "verdict": one of "pas_bon", "satisfaisant", "tres_bon"
+  "score": integer 1, 2, or 3 matching the verdict
+  "justification": 2-4 sentences explaining your verdict

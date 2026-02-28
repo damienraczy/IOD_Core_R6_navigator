@@ -1,0 +1,659 @@
+from __future__ import annotations
+
+import json
+import re
+import urllib.error
+import urllib.request
+from dataclasses import dataclass
+from pathlib import Path
+
+import yaml
+
+from r6_navigator.services.prompt import load_prompt
+
+_PACKAGE_DIR = Path(__file__).parent.parent  # r6_navigator/
+_PROJECT_ROOT = _PACKAGE_DIR.parent  # project root (params.yml lives here)
+
+
+# ---------------------------------------------------------------------------
+# Public data model
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class GeneratedContent:
+    name: str
+    definition: str
+    central_function: str
+    observable: str  # Bullet string: "- phrase.\n- phrase.\n" (max 5 items)
+    risk_insufficient: str  # Bullet string (max 5 items)
+    risk_excessive: str  # Bullet string (max 5 items)
+
+
+@dataclass
+class GeneratedQuestions:
+    questions: list[str]  # textes des questions STAR
+    observable_items: dict[str, list[str]]  # {code_catégorie: [texte, ...]}
+
+
+@dataclass
+class GeneratedCoaching:
+    reflection_themes: str  # liste à puces "- phrase.\n"
+    intervention_levers: str
+    recommended_missions: str
+
+
+# ---------------------------------------------------------------------------
+# Public API
+# ---------------------------------------------------------------------------
+
+
+def generate_fiche(capacity_id: str, lang: str) -> GeneratedContent:
+    """Calls Ollama to generate professional R6 content for one capacity.
+
+    Args:
+        capacity_id: e.g. "I1a"
+        lang: active UI language ("fr" or "en"); model responds in this language.
+
+    Returns:
+        GeneratedContent populated from the JSON response.
+
+    Raises:
+        RuntimeError: if Ollama is unreachable or the response is not valid JSON.
+    """
+    params = _load_params()
+    ollama_cfg = params["ollama"]
+    url = ollama_cfg["url"]
+    model = ollama_cfg["model"]
+    timeout = int(ollama_cfg.get("timeout", 10))
+    system_prompt = params.get("system_prompt", "")
+
+    axioms = _load_axioms()
+    canonical_name = _load_canonical_name(capacity_id, lang)
+
+    level_code = capacity_id[0]
+    axis_number = capacity_id[1]
+    pole_code = capacity_id[2]
+
+    ontology = axioms["r6_ontology"]
+    level_info = ontology["levels"][level_code]
+    axis_info = ontology["axes"][int(axis_number)]
+    pole_info = ontology["poles"][pole_code]
+
+    lang_name = "French" if lang == "fr" else "US English"
+    user_prompt = load_prompt(
+        "generate_fiche",
+        lang_name=lang_name,
+        capacity_id=capacity_id,
+        level_name=level_info["name"],
+        level_code=level_code,
+        axis_name=axis_info["name"],
+        axis_number=axis_number,
+        pole_name=pole_info["name"],
+        pole_code=pole_code,
+        canonical_name=canonical_name,
+    )
+
+    raw = _call_ollama(url, model, system_prompt, user_prompt, timeout)
+    return _parse_response(raw, capacity_id)
+
+
+def generate_questions(capacity_id: str, lang: str) -> GeneratedQuestions:
+    """Génère les questions STAR et les manifestations observables d'une capacité.
+
+    Args:
+        capacity_id: Identifiant de la capacité (ex. ``"I1a"``).
+        lang: Langue active (``"fr"`` ou ``"en"``).
+
+    Returns:
+        GeneratedQuestions avec la liste de questions et les items par catégorie.
+
+    Raises:
+        RuntimeError: Si Ollama est inaccessible ou la réponse n'est pas un JSON valide.
+    """
+    params = _load_params()
+    ollama_cfg = params["ollama"]
+    url = ollama_cfg["url"]
+    model = ollama_cfg["model"]
+    timeout = int(ollama_cfg.get("timeout", 10))
+    system_prompt = params.get("system_prompt", "")
+
+    axioms = _load_axioms()
+    canonical_name = _load_canonical_name(capacity_id, lang)
+
+    level_code = capacity_id[0]
+    axis_number = capacity_id[1]
+    pole_code = capacity_id[2]
+
+    ontology = axioms["r6_ontology"]
+    level_info = ontology["levels"][level_code]
+    axis_info = ontology["axes"][int(axis_number)]
+    pole_info = ontology["poles"][pole_code]
+
+    lang_name = "French" if lang == "fr" else "US English"
+    user_prompt = load_prompt(
+        "generate_questions",
+        lang_name=lang_name,
+        capacity_id=capacity_id,
+        level_name=level_info["name"],
+        level_code=level_code,
+        axis_name=axis_info["name"],
+        axis_number=axis_number,
+        pole_name=pole_info["name"],
+        pole_code=pole_code,
+        canonical_name=canonical_name,
+    )
+
+    raw = _call_ollama(url, model, system_prompt, user_prompt, timeout)
+    return _parse_questions_response(raw)
+
+
+def generate_coaching(capacity_id: str, lang: str) -> GeneratedCoaching:
+    """Génère les contenus de coaching d'une capacité (thèmes, leviers, missions).
+
+    Args:
+        capacity_id: Identifiant de la capacité (ex. ``"I1a"``).
+        lang: Langue active (``"fr"`` ou ``"en"``).
+
+    Returns:
+        GeneratedCoaching avec les trois champs texte en listes à puces.
+
+    Raises:
+        RuntimeError: Si Ollama est inaccessible ou la réponse n'est pas un JSON valide.
+    """
+    params = _load_params()
+    ollama_cfg = params["ollama"]
+    url = ollama_cfg["url"]
+    model = ollama_cfg["model"]
+    timeout = int(ollama_cfg.get("timeout", 10))
+    system_prompt = params.get("system_prompt", "")
+
+    axioms = _load_axioms()
+    canonical_name = _load_canonical_name(capacity_id, lang)
+
+    level_code = capacity_id[0]
+    axis_number = capacity_id[1]
+    pole_code = capacity_id[2]
+
+    ontology = axioms["r6_ontology"]
+    level_info = ontology["levels"][level_code]
+    axis_info = ontology["axes"][int(axis_number)]
+    pole_info = ontology["poles"][pole_code]
+
+    lang_name = "French" if lang == "fr" else "US English"
+    user_prompt = load_prompt(
+        "generate_coaching",
+        lang_name=lang_name,
+        capacity_id=capacity_id,
+        level_name=level_info["name"],
+        level_code=level_code,
+        axis_name=axis_info["name"],
+        axis_number=axis_number,
+        pole_name=pole_info["name"],
+        pole_code=pole_code,
+        canonical_name=canonical_name,
+    )
+
+    raw = _call_ollama(url, model, system_prompt, user_prompt, timeout)
+    return _parse_coaching_response(raw)
+
+
+def translate_fiche(
+    capacity_id: str,
+    source_fields: dict[str, str],
+    source_lang: str,
+    target_lang: str,
+) -> GeneratedContent:
+    """Traduit le contenu Fiche d'une capacité d'une langue vers une autre via Ollama.
+
+    Args:
+        capacity_id: Identifiant de la capacité (ex. ``"I1a"``).
+        source_fields: Dictionnaire des champs sources avec les clés
+            ``name``, ``definition``, ``central_function``, ``observable``,
+            ``risk_insufficient``, ``risk_excessive``.
+        source_lang: Code de la langue source (``"fr"`` ou ``"en"``).
+        target_lang: Code de la langue cible (``"fr"`` ou ``"en"``).
+
+    Returns:
+        GeneratedContent peuplé avec les champs traduits.
+
+    Raises:
+        RuntimeError: Si Ollama est inaccessible ou la réponse n'est pas un JSON valide.
+    """
+    params = _load_params()
+    ollama_cfg = params["ollama"]
+    url = ollama_cfg["url"]
+    model = ollama_cfg["model"]
+    timeout = int(ollama_cfg.get("timeout", 10))
+    system_prompt = params.get("system_prompt", "")
+
+    axioms = _load_axioms()
+    level_code = capacity_id[0]
+    axis_number = capacity_id[1]
+    pole_code = capacity_id[2]
+    ontology = axioms["r6_ontology"]
+    level_info = ontology["levels"][level_code]
+    axis_info = ontology["axes"][int(axis_number)]
+    pole_info = ontology["poles"][pole_code]
+
+    source_lang_name = "French" if source_lang == "fr" else "US English"
+    target_lang_name = "French" if target_lang == "fr" else "US English"
+
+    user_prompt = load_prompt(
+        "translate_fiche",
+        source_lang_name=source_lang_name,
+        target_lang_name=target_lang_name,
+        capacity_id=capacity_id,
+        level_name=level_info["name"],
+        level_code=level_code,
+        axis_name=axis_info["name"],
+        axis_number=axis_number,
+        pole_name=pole_info["name"],
+        pole_code=pole_code,
+        source_content=json.dumps(source_fields, ensure_ascii=False, indent=2),
+    )
+
+    raw = _call_ollama(url, model, system_prompt, user_prompt, timeout)
+    return _parse_response(raw, capacity_id)
+
+
+def translate_questions(
+    capacity_id: str,
+    questions: list[str],
+    source_lang: str,
+    target_lang: str,
+) -> list[str]:
+    """Traduit une liste de questions STAR d'une langue vers une autre via Ollama.
+
+    Args:
+        capacity_id: Identifiant de la capacité (ex. ``"I1a"``).
+        questions: Liste des textes de questions dans la langue source.
+        source_lang: Code de la langue source (``"fr"`` ou ``"en"``).
+        target_lang: Code de la langue cible (``"fr"`` ou ``"en"``).
+
+    Returns:
+        Liste de textes traduits dans le même ordre que la liste source.
+
+    Raises:
+        RuntimeError: Si Ollama est inaccessible ou la réponse n'est pas un JSON valide.
+    """
+    params = _load_params()
+    ollama_cfg = params["ollama"]
+    url = ollama_cfg["url"]
+    model = ollama_cfg["model"]
+    timeout = int(ollama_cfg.get("timeout", 10))
+    system_prompt = params.get("system_prompt", "")
+
+    axioms = _load_axioms()
+    level_code = capacity_id[0]
+    level_info = axioms["r6_ontology"]["levels"][level_code]
+
+    source_lang_name = "French" if source_lang == "fr" else "US English"
+    target_lang_name = "French" if target_lang == "fr" else "US English"
+
+    user_prompt = load_prompt(
+        "translate_questions",
+        source_lang_name=source_lang_name,
+        target_lang_name=target_lang_name,
+        capacity_id=capacity_id,
+        level_name=level_info["name"],
+        level_code=level_code,
+        source_questions=json.dumps(questions, ensure_ascii=False, indent=2),
+    )
+
+    raw = _call_ollama(url, model, system_prompt, user_prompt, timeout)
+    return _parse_questions_list(raw)
+
+
+def translate_observable_items(
+    capacity_id: str,
+    items_by_cat: dict[str, list[str]],
+    source_lang: str,
+    target_lang: str,
+) -> dict[str, list[str]]:
+    """Traduit les manifestations observables par catégorie via Ollama.
+
+    Args:
+        capacity_id: Identifiant de la capacité (ex. ``"I1a"``).
+        items_by_cat: Dictionnaire ``{code_catégorie: [texte, ...]}`` en langue source.
+            Les codes valides sont ``OK``, ``EXC``, ``DEP``, ``INS``.
+        source_lang: Code de la langue source (``"fr"`` ou ``"en"``).
+        target_lang: Code de la langue cible (``"fr"`` ou ``"en"``).
+
+    Returns:
+        Dictionnaire ``{code_catégorie: [texte_traduit, ...]}`` dans le même ordre
+        que la source, avec les mêmes clés.
+
+    Raises:
+        RuntimeError: Si Ollama est inaccessible ou la réponse n'est pas un JSON valide.
+    """
+    params = _load_params()
+    ollama_cfg = params["ollama"]
+    url = ollama_cfg["url"]
+    model = ollama_cfg["model"]
+    timeout = int(ollama_cfg.get("timeout", 10))
+    system_prompt = params.get("system_prompt", "")
+
+    axioms = _load_axioms()
+    level_code = capacity_id[0]
+    level_info = axioms["r6_ontology"]["levels"][level_code]
+
+    source_lang_name = "French" if source_lang == "fr" else "US English"
+    target_lang_name = "French" if target_lang == "fr" else "US English"
+
+    user_prompt = load_prompt(
+        "translate_observable_items",
+        source_lang_name=source_lang_name,
+        target_lang_name=target_lang_name,
+        capacity_id=capacity_id,
+        level_name=level_info["name"],
+        level_code=level_code,
+        source_items=json.dumps(items_by_cat, ensure_ascii=False, indent=2),
+    )
+
+    raw = _call_ollama(url, model, system_prompt, user_prompt, timeout)
+    return _parse_items_dict(raw, items_by_cat)
+
+
+def translate_coaching(
+    capacity_id: str,
+    source_fields: dict[str, str],
+    source_lang: str,
+    target_lang: str,
+) -> GeneratedCoaching:
+    """Traduit le contenu Coaching d'une capacité d'une langue vers une autre via Ollama.
+
+    Args:
+        capacity_id: Identifiant de la capacité (ex. ``"I1a"``).
+        source_fields: Dictionnaire des champs sources avec les clés
+            ``reflection_themes``, ``intervention_levers``, ``recommended_missions``.
+        source_lang: Code de la langue source (``"fr"`` ou ``"en"``).
+        target_lang: Code de la langue cible (``"fr"`` ou ``"en"``).
+
+    Returns:
+        GeneratedCoaching peuplé avec les trois champs traduits.
+
+    Raises:
+        RuntimeError: Si Ollama est inaccessible ou la réponse n'est pas un JSON valide.
+    """
+    params = _load_params()
+    ollama_cfg = params["ollama"]
+    url = ollama_cfg["url"]
+    model = ollama_cfg["model"]
+    timeout = int(ollama_cfg.get("timeout", 10))
+    system_prompt = params.get("system_prompt", "")
+
+    axioms = _load_axioms()
+    level_code = capacity_id[0]
+    ontology = axioms["r6_ontology"]
+    level_info = ontology["levels"][level_code]
+
+    source_lang_name = "French" if source_lang == "fr" else "US English"
+    target_lang_name = "French" if target_lang == "fr" else "US English"
+
+    user_prompt = load_prompt(
+        "translate_coaching",
+        source_lang_name=source_lang_name,
+        target_lang_name=target_lang_name,
+        capacity_id=capacity_id,
+        level_name=level_info["name"],
+        level_code=level_code,
+        source_content=json.dumps(source_fields, ensure_ascii=False, indent=2),
+    )
+
+    raw = _call_ollama(url, model, system_prompt, user_prompt, timeout)
+    return _parse_coaching_response(raw)
+
+
+# ---------------------------------------------------------------------------
+# Internal helpers
+# ---------------------------------------------------------------------------
+
+
+def _load_params() -> dict:
+    params_path = _PROJECT_ROOT / "params.yml"
+    with open(params_path, encoding="utf-8") as f:
+        return yaml.safe_load(f)
+
+
+def _load_axioms() -> dict:
+    axioms_path = _PACKAGE_DIR / "axioms.yml"
+    with open(axioms_path, encoding="utf-8") as f:
+        return yaml.safe_load(f)
+
+
+def _load_canonical_name(capacity_id: str, lang: str) -> str:
+    names_path = _PACKAGE_DIR / f"capacities_{lang}.yml"
+    try:
+        with open(names_path, encoding="utf-8") as f:
+            data = yaml.safe_load(f)
+        names = data.get(f"capacities_{lang}", {})
+        return names.get(capacity_id, capacity_id)
+    except FileNotFoundError:
+        return capacity_id
+
+
+def _call_ollama(url: str, model: str, system: str, prompt: str, timeout: int) -> str:
+    payload = json.dumps(
+        {
+            "model": model,
+            "system": system,
+            "prompt": prompt,
+            "stream": False,
+            "format": "json",
+        }
+    ).encode("utf-8")
+    req = urllib.request.Request(
+        f"{url.rstrip('/')}/api/generate",
+        data=payload,
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as response:
+            data = json.loads(response.read().decode("utf-8"))
+            return data["response"]
+    except urllib.error.URLError as e:
+        raise RuntimeError(f"Ollama unreachable at {url}: {e}") from e
+    except (KeyError, json.JSONDecodeError) as e:
+        raise RuntimeError(f"Unexpected Ollama response format: {e}") from e
+
+
+def _strip_markdown_json(text: str) -> str:
+    """Removes optional ```json ... ``` or ``` ... ``` wrapper from model output."""
+    text = text.strip()
+    match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", text)
+    if match:
+        return match.group(1).strip()
+    return text
+
+
+def _cap_bullets(value, max_items: int = 5) -> str:
+    """Keeps at most max_items bullet lines.
+
+    Accepts either a plain string or a list (some models return arrays).
+    """
+    if not value:
+        return ""
+    if isinstance(value, list):
+        # Each element may already be "- text" or just "text"
+        lines = []
+        for item in value:
+            item = str(item).strip()
+            if not item.startswith("-"):
+                item = f"- {item}"
+            lines.append(item)
+    else:
+        lines = [
+            line for line in str(value).splitlines() if line.strip().startswith("-")
+        ]
+    capped = lines[:max_items]
+    return "\n".join(capped) + ("\n" if capped else "")
+
+
+def _to_str(value, fallback: str = "") -> str:
+    """Coerce any model-returned value to a plain string."""
+    if value is None:
+        return fallback
+    if isinstance(value, list):
+        return "\n".join(str(item) for item in value)
+    return str(value)
+
+
+def _parse_response(raw: str, capacity_id: str) -> GeneratedContent:
+    clean = _strip_markdown_json(raw)
+    try:
+        data = json.loads(clean)
+    except json.JSONDecodeError as e:
+        raise RuntimeError(
+            f"Ollama response is not valid JSON: {e}\nRaw (first 300 chars): {raw[:300]}"
+        ) from e
+
+    return GeneratedContent(
+        name=_to_str(data.get("name"), fallback=capacity_id),
+        definition=_to_str(data.get("definition")),
+        central_function=_to_str(data.get("central_function")),
+        observable=_cap_bullets(data.get("observable", "")),
+        risk_insufficient=_cap_bullets(data.get("risk_insufficient", "")),
+        risk_excessive=_cap_bullets(data.get("risk_excessive", "")),
+    )
+
+
+def _parse_questions_list(raw: str) -> list[str]:
+    """Parse la réponse Ollama pour translate_questions().
+
+    Args:
+        raw: Chaîne JSON brute retournée par Ollama ; doit contenir la clé ``questions``.
+
+    Returns:
+        Liste de textes traduits dans l'ordre de la source.
+
+    Raises:
+        RuntimeError: Si la réponse n'est pas un JSON valide.
+    """
+    clean = _strip_markdown_json(raw)
+    try:
+        data = json.loads(clean)
+    except json.JSONDecodeError as e:
+        raise RuntimeError(
+            f"Ollama response is not valid JSON: {e}\nRaw (first 300 chars): {raw[:300]}"
+        ) from e
+
+    raw_questions = data.get("questions", [])
+    if isinstance(raw_questions, list):
+        return [str(q).strip() for q in raw_questions if str(q).strip()]
+    return [
+        line.strip(" -") for line in str(raw_questions).splitlines() if line.strip()
+    ]
+
+
+def _parse_items_dict(raw: str, source: dict[str, list[str]]) -> dict[str, list[str]]:
+    """Parse la réponse Ollama pour translate_observable_items().
+
+    Assure que chaque catégorie traduite contient au plus autant d'items
+    que la source correspondante.
+
+    Args:
+        raw: Chaîne JSON brute retournée par Ollama.
+        source: Dictionnaire source ``{code: [texte, ...]}`` utilisé comme référence
+            pour le nombre d'items attendus par catégorie.
+
+    Returns:
+        Dictionnaire ``{code: [texte_traduit, ...]}`` pour les catégories présentes
+        dans la source.
+
+    Raises:
+        RuntimeError: Si la réponse n'est pas un JSON valide.
+    """
+    clean = _strip_markdown_json(raw)
+    try:
+        data = json.loads(clean)
+    except json.JSONDecodeError as e:
+        raise RuntimeError(
+            f"Ollama response is not valid JSON: {e}\nRaw (first 300 chars): {raw[:300]}"
+        ) from e
+
+    result: dict[str, list[str]] = {}
+    for code, src_items in source.items():
+        raw_cat = data.get(code, [])
+        if isinstance(raw_cat, list):
+            items = [str(t).strip() for t in raw_cat if str(t).strip()]
+        else:
+            items = [
+                line.strip(" -") for line in str(raw_cat).splitlines() if line.strip()
+            ]
+        # Tronque si le modèle a retourné plus d'items que la source.
+        result[code] = items[: len(src_items)]
+    return result
+
+
+def _parse_questions_response(raw: str) -> GeneratedQuestions:
+    """Parse la réponse Ollama pour generate_questions().
+
+    Args:
+        raw: Chaîne JSON brute retournée par Ollama.
+
+    Returns:
+        GeneratedQuestions peuplé depuis les clés ``questions`` et ``observable_items``.
+
+    Raises:
+        RuntimeError: Si la réponse n'est pas un JSON valide.
+    """
+    clean = _strip_markdown_json(raw)
+    try:
+        data = json.loads(clean)
+    except json.JSONDecodeError as e:
+        raise RuntimeError(
+            f"Ollama response is not valid JSON: {e}\nRaw (first 300 chars): {raw[:300]}"
+        ) from e
+
+    # Normalise la liste de questions : accepte strings ou listes de strings.
+    raw_questions = data.get("questions", [])
+    if isinstance(raw_questions, list):
+        questions = [str(q).strip() for q in raw_questions if str(q).strip()]
+    else:
+        questions = [
+            line.strip(" -") for line in str(raw_questions).splitlines() if line.strip()
+        ]
+
+    # Normalise les items observables par catégorie, cap à 5 par catégorie.
+    raw_items = data.get("observable_items", {})
+    observable_items: dict[str, list[str]] = {}
+    for code in ("OK", "EXC", "DEP", "INS"):
+        raw_cat = raw_items.get(code, [])
+        if isinstance(raw_cat, list):
+            items = [str(t).strip() for t in raw_cat if str(t).strip()]
+        else:
+            items = [
+                line.strip(" -") for line in str(raw_cat).splitlines() if line.strip()
+            ]
+        observable_items[code] = items[:5]
+
+    return GeneratedQuestions(questions=questions, observable_items=observable_items)
+
+
+def _parse_coaching_response(raw: str) -> GeneratedCoaching:
+    """Parse la réponse Ollama pour generate_coaching().
+
+    Args:
+        raw: Chaîne JSON brute retournée par Ollama.
+
+    Returns:
+        GeneratedCoaching avec les trois champs en listes à puces.
+
+    Raises:
+        RuntimeError: Si la réponse n'est pas un JSON valide.
+    """
+    clean = _strip_markdown_json(raw)
+    try:
+        data = json.loads(clean)
+    except json.JSONDecodeError as e:
+        raise RuntimeError(
+            f"Ollama response is not valid JSON: {e}\nRaw (first 300 chars): {raw[:300]}"
+        ) from e
+
+    return GeneratedCoaching(
+        reflection_themes=_cap_bullets(data.get("reflection_themes", "")),
+        intervention_levers=_cap_bullets(data.get("intervention_levers", "")),
+        recommended_missions=_cap_bullets(data.get("recommended_missions", "")),
+    )

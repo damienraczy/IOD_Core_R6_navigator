@@ -1,0 +1,186 @@
+r6_ontology:
+  fundamental_principles:
+    isomorphism: "Same functional structure at each level (S ≅ O ≅ I)."
+    emergence: "Higher levels emerge from lower levels (bottom-up). Non-reductive: O ≠ sum of I, S ≠ sum of O."
+    constraint: "Each level enables and limits adjacent levels (bidirectional: top-down and bottom-up)."
+    balance: "Both poles must be active on every axis. Pathology: one pole dominates, or both atrophy."
+    independence: "All 6 capacities at each level are orthogonal — each must be evaluated separately."
+    completeness: "The 18 capacities cover all organizational functions."
+    linguistic_differentiation: |
+      Each level uses process types and participant roles consistent with its ontological nature
+      (Halliday's Transitivity).
+      Level I (Intentional agent):   material/behavioural processes — "The person [verb]..."
+      Level O (Structured collective): relational-attributive/abstract material — "The system [verb]..."
+      Level S (Unitary entity):      relational-identifying/mental — "The organization [verb] itself on/toward..."
+  levels:
+    I:
+      name: "Individual"
+      description: "Observable behaviors in a person."
+      unit: "Individual Competencies"
+      measurement_scale: "I6_EQF_Proficiency_Levels.md"
+    O:
+      name: "Organizational"
+      description: "Emergent system capabilities."
+      unit: "Organizational Capabilities"
+      measurement_scale: "O6_Maturity_Levels.md"
+    S:
+      name: "Strategic"
+      description: "Strategic orientations adopted by the organization."
+      unit: "Strategic Pivot Logics"
+      measurement_scale: "S6_Maturity_Levels_and_Learning_Loops.md"
+  axes:
+    1:
+      name: "Direction"
+      tension:
+        pole_a: "Stability"
+        pole_b: "Change"
+    2:
+      name: "Coordination"
+      tension:
+        pole_a: "Autonomy"
+        pole_b: "Interdependence"
+    3:
+      name: "Realization"
+      tension:
+        pole_a: "Direct"
+        pole_b: "Mediated"
+  poles:
+    a:
+      name: "Agentive"
+      characteristics: "Stabilizing / Individualizing / Direct"
+    b:
+      name: "Instrumental"
+      characteristics: "Transforming / Collectivizing / Mediated"
+  capacities:
+    I1a:
+      name: "Demonstrating Responsibility"
+      level: "I"
+      axis: "1"
+      pole: "a"
+      enables: "O1a"
+      supports: "S1a"
+    I1b:
+      name: "Demonstrating Innovation"
+      level: "I"
+      axis: "1"
+      pole: "b"
+      enables: "O1b"
+      supports: "S1b"
+    I2a:
+      name: "Acting Autonomously"
+      level: "I"
+      axis: "2"
+      pole: "a"
+      enables: "O2a"
+      supports: "S2a"
+    I2b:
+      name: "Acting Collaboratively"
+      level: "I"
+      axis: "2"
+      pole: "b"
+      enables: "O2b"
+      supports: "S2b"
+    I3a:
+      name: "Contributing Through Results"
+      level: "I"
+      axis: "3"
+      pole: "a"
+      enables: "O3a"
+      supports: "S3a"
+    I3b:
+      name: "Contributing Through Process"
+      level: "I"
+      axis: "3"
+      pole: "b"
+      enables: "O3b"
+      supports: "S3b"
+    O1a:
+      name: "Sustaining Coherence"
+      level: "O"
+      axis: "1"
+      pole: "a"
+      emerges_from: "I1a"
+      enables: "S1a"
+    O1b:
+      name: "Enabling Transformation"
+      level: "O"
+      axis: "1"
+      pole: "b"
+      emerges_from: "I1b"
+      enables: "S1b"
+    O2a:
+      name: "Coordinating Autonomy"
+      level: "O"
+      axis: "2"
+      pole: "a"
+      emerges_from: "I2a"
+      enables: "S2a"
+    O2b:
+      name: "Structuring Cooperation"
+      level: "O"
+      axis: "2"
+      pole: "b"
+      emerges_from: "I2b"
+      enables: "S2b"
+    O3a:
+      name: "Regulating Production Output"
+      level: "O"
+      axis: "3"
+      pole: "a"
+      emerges_from: "I3a"
+      enables: "S3a"
+    O3b:
+      name: "Integrating Realization Processes"
+      level: "O"
+      axis: "3"
+      pole: "b"
+      emerges_from: "I3b"
+      enables: "S3b"
+    S1a:
+      name: "Positioning on Value"
+      level: "S"
+      axis: "1"
+      pole: "a"
+      emerges_from: "O1a"
+    S1b:
+      name: "Positioning on Adaptation"
+      level: "S"
+      axis: "1"
+      pole: "b"
+      emerges_from: "O1b"
+    S2a:
+      name: "Orienting Toward Delegated Governance"
+      level: "S"
+      axis: "2"
+      pole: "a"
+      emerges_from: "O2a"
+    S2b:
+      name: "Orienting Toward Integrative Governance"
+      level: "S"
+      axis: "2"
+      pole: "b"
+      emerges_from: "O2b"
+    S3a:
+      name: "Committing to Direct Realization"
+      level: "S"
+      axis: "3"
+      pole: "a"
+      emerges_from: "O3a"
+    S3b:
+      name: "Committing to Mediated Realization"
+      level: "S"
+      axis: "3"
+      pole: "b"
+      emerges_from: "O3b"
+  methodology:
+    diagnostic_order:
+      standard:
+        sequence: ["Direction", "Realization", "Coordination"]
+        rationale: >
+          Direction: highest abstraction, orients investigation.
+          Realization: most observable, tests S-O-I coherence.
+          Coordination: most complex, explains gaps.
+      crisis:
+        sequence: ["Realization", "Coordination", "Direction"]
+        rationale: "Address immediate failure before root causes."
+    orthogonality: "Axes are causally independent (Direction ⊥ Coordination ⊥ Realization). The diagnostic sequence is an investigation optimization, not a causal chain."

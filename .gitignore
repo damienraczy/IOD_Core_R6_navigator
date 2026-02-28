@@ -1,0 +1,37 @@
+qt-ui/app.ui
+qt-ui/nav-panel.ui
+qt-ui/detail-panel.ui
+qt-ui/tab-fiche.ui
+qt-ui/tab-questions.ui
+qt-ui/tab-coaching.ui
+qt-ui/dialogs/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Environnement virtuel
+.venv/
+venv/
+env/
+
+# Base de données SQLite
+*.db
+*.db-shm
+*.db-wal
+
+# Pytest
+.pytest_cache/
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+
+# macOS
+.DS_Store
+
+# Outils de développement
+.claude/
+.zed/

@@ -1,0 +1,126 @@
+{
+  "_comment": "English UI strings for R6 Navigator. Keys are used via i18n.t('key').",
+
+  "app.title": "R6 Navigator",
+  "app.title_with_capacity": "R6 Navigator — {capacity_id} {label}",
+
+  "lang.fr": "Français",
+  "lang.en": "English",
+
+  "nav.filter.level": "Level",
+  "nav.filter.axis": "Axis",
+  "nav.filter.pole": "Pole",
+  "nav.filter.all": "All",
+
+  "level.S": "Strategic",
+  "level.O": "Organizational",
+  "level.I": "Individual",
+
+  "axis.1": "Direction",
+  "axis.2": "Coordination",
+  "axis.3": "Realization",
+
+  "pole.a": "Agentive",
+  "pole.b": "Instrumental",
+
+  "category.OK":  "✅ Manifests",
+  "category.EXC": "⚠️ Excessive",
+  "category.DEP": "🔼 Exceeds",
+  "category.INS": "❌ Insufficient",
+
+  "tab.fiche": "Sheet",
+  "tab.questions": "Questions",
+  "tab.coaching": "Coaching",
+
+  "fiche.level": "Level",
+  "fiche.axis": "Axis",
+  "fiche.pole": "Pole",
+  "fiche.code": "Code",
+  "fiche.label": "Label",
+  "fiche.definition": "Definition",
+  "fiche.central_function": "Central function",
+  "fiche.observable": "Observable",
+  "fiche.risk_insufficient": "Risk if insufficient",
+  "fiche.risk_excessive": "Risk if excessive",
+
+  "questions.section_title": "Questions",
+  "questions.new": "+ New question",
+  "questions.items_title": "Observable manifestations",
+  "questions.new_item": "+ New item",
+  "questions.category_label": "Category",
+  "table.col.text": "Text",
+  "table.col.actions": "Actions",
+
+  "coaching.reflection_themes": "Reflection themes",
+  "coaching.intervention_levers": "Intervention levers",
+  "coaching.recommended_missions": "Recommended missions",
+
+  "isomorphism.label": "Sibling capacities:",
+  "isomorphism.arrow": "←isomorphic→",
+
+  "btn.new": "New",
+  "btn.edit": "Edit",
+  "btn.save": "Save",
+  "btn.cancel": "Cancel",
+  "btn.delete": "Delete",
+  "btn.save_db": "Save DB",
+  "btn.restore_db": "Restore DB",
+  "btn.export_docx": "Create DOCX",
+  "btn.generate": "Generate",
+  "btn.judge": "Judge",
+  "btn.move_up": "↑",
+  "btn.move_down": "↓",
+  "btn.remove": "✕",
+
+  "dialog.new_capacity.title": "New capacity",
+  "dialog.new_capacity.level": "Level",
+  "dialog.new_capacity.axis": "Axis",
+  "dialog.new_capacity.pole": "Pole",
+  "dialog.new_capacity.label_fr": "Label (fr) *",
+  "dialog.new_capacity.duplicate": "This level/axis/pole combination already exists ({capacity_id}).",
+
+  "dialog.delete.title": "Confirm deletion",
+  "dialog.delete.message": "Delete capacity {capacity_id}?",
+  "dialog.delete.canonical_warning": "⚠️ This capacity is part of the standard R6 framework. Deleting it will affect model integrity.",
+  "dialog.delete.canonical_confirm": "I confirm that I want to delete a canonical capacity.",
+
+  "dialog.unsaved.title": "Unsaved changes",
+  "dialog.unsaved.message": "You have unsaved changes. What do you want to do?",
+  "dialog.unsaved.save": "Save",
+  "dialog.unsaved.discard": "Discard",
+  "dialog.unsaved.cancel": "Cancel",
+
+  "dialog.docx.title": "Export to DOCX",
+  "dialog.docx.scope_current": "Current capacity",
+  "dialog.docx.scope_all": "All capacities",
+  "dialog.docx.include": "Include",
+  "dialog.docx.language": "Export language",
+
+  "dialog.restore.title": "Restore database",
+  "dialog.restore.message": "Select a backup file (.db). The active database will be replaced.",
+  "dialog.restore.confirm": "This will replace all current data. Continue?",
+  "dialog.restore.invalid": "The selected file is not a valid SQLite database.",
+
+  "dialog.save_db.success": "Backup created: {path}",
+
+  "judge.window_title": "Verification — {capacity_id}",
+  "judge.running": "Evaluation in progress…",
+  "judge.axioms_r6": "R6 Axioms",
+  "judge.halliday": "Halliday",
+  "judge.coherence": "Level/pole coherence",
+  "judge.verdict.pas_bon": "Not good",
+  "judge.verdict.satisfaisant": "Satisfactory",
+  "judge.verdict.tres_bon": "Very good",
+  "judge.aggregate": "Aggregate verdict",
+  "judge.version": "Version {n} / {total}",
+  "judge.original": "Original",
+  "judge.error": "Evaluation error: {message}",
+
+  "error.db": "Database error: {message}",
+  "error.export": "Export error: {message}",
+  "error.generate": "AI generation error: {message}",
+  "error.restore": "Restore error: {message}",
+  "error.required_field": "This field is required.",
+
+  "validation.label_fr_required": "Label (fr) is required."
+}

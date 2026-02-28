@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>TabCoaching</class>
+ <widget class="QWidget" name="TabCoaching">
+  <property name="geometry">
+   <rect><x>0</x><y>0</y><width>620</width><height>600</height></rect>
+  </property>
+  <layout class="QVBoxLayout" name="main_layout">
+   <property name="spacing"><number>8</number></property>
+   <property name="leftMargin"><number>12</number></property>
+   <property name="topMargin"><number>12</number></property>
+   <property name="rightMargin"><number>12</number></property>
+   <property name="bottomMargin"><number>12</number></property>
+
+   <!-- Bouton de génération IA aligné à droite -->
+   <item>
+    <layout class="QHBoxLayout" name="coaching_header">
+     <item>
+      <spacer>
+       <property name="orientation"><enum>Qt::Horizontal</enum></property>
+       <property name="sizeHint" stdset="0">
+        <size><width>40</width><height>20</height></size>
+       </property>
+      </spacer>
+     </item>
+     <item>
+      <widget class="QPushButton" name="btn_generer">
+       <property name="text"><string>Générer</string></property>
+       <property name="toolTip"><string>Générer le contenu coaching via IA</string></property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+
+   <!-- Zone 1: Thèmes de réflexion -->
+   <item>
+    <widget class="QLabel" name="lbl_reflection_themes_key">
+     <property name="text"><string>Thèmes de réflexion</string></property>
+     <property name="font">
+      <font><bold>true</bold></font>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QPlainTextEdit" name="text_reflection_themes">
+     <property name="minimumSize"><size><width>0</width><height>100</height></size></property>
+     <property name="placeholderText"><string/></property>
+    </widget>
+   </item>
+
+   <!-- Zone 2: Leviers d'intervention -->
+   <item>
+    <widget class="QLabel" name="lbl_intervention_levers_key">
+     <property name="text"><string>Leviers d'intervention</string></property>
+     <property name="font">
+      <font><bold>true</bold></font>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QPlainTextEdit" name="text_intervention_levers">
+     <property name="minimumSize"><size><width>0</width><height>100</height></size></property>
+     <property name="placeholderText"><string/></property>
+    </widget>
+   </item>
+
+   <!-- Zone 3: Missions à envisager -->
+   <item>
+    <widget class="QLabel" name="lbl_recommended_missions_key">
+     <property name="text"><string>Missions à envisager</string></property>
+     <property name="font">
+      <font><bold>true</bold></font>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QPlainTextEdit" name="text_recommended_missions">
+     <property name="minimumSize"><size><width>0</width><height>100</height></size></property>
+     <property name="placeholderText"><string/></property>
+    </widget>
+   </item>
+
+   <!-- Vertical spacer -->
+   <item>
+    <spacer name="vertical_spacer">
+     <property name="orientation"><enum>Qt::Vertical</enum></property>
+     <property name="sizeHint" stdset="0">
+      <size><width>20</width><height>40</height></size>
+     </property>
+    </spacer>
+   </item>
+
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

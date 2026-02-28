@@ -1,0 +1,216 @@
+from __future__ import annotations
+
+from pathlib import Path
+
+from sqlalchemy import Engine, create_engine, event, text
+from sqlalchemy.orm import sessionmaker
+
+from r6_navigator.db.models import (
+    AppSetting,
+    Axis,
+    Base,
+    Capacity,
+    CapacityTranslation,
+    Coaching,
+    Level,
+    ObservableCategory,
+    Pole,
+)
+
+
+# ---------------------------------------------------------------------------
+# Engine / session factory
+# ---------------------------------------------------------------------------
+
+def get_engine(db_path: Path) -> Engine:
+    engine = create_engine(
+        f"sqlite:///{db_path}",
+        connect_args={"check_same_thread": False},
+    )
+
+    @event.listens_for(engine, "connect")
+    def _set_foreign_keys(dbapi_connection, _connection_record) -> None:
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA foreign_keys = ON")
+        cursor.close()
+
+    return engine
+
+
+def get_session_factory(engine: Engine) -> sessionmaker:
+    return sessionmaker(engine, expire_on_commit=False)
+
+
+# ---------------------------------------------------------------------------
+# DB initialisation
+# ---------------------------------------------------------------------------
+
+def init_db(engine: Engine, seed_capacities: bool = True) -> None:
+    Base.metadata.create_all(engine)
+    _migrate_to_translation_tables(engine)
+    _seed_reference_data(engine)
+    if seed_capacities:
+        _seed_capacities(engine)
+
+
+# ---------------------------------------------------------------------------
+# Migration — legacy _fr/_en bilingual columns → *_translation tables
+# ---------------------------------------------------------------------------
+
+def _migrate_to_translation_tables(engine: Engine) -> None:
+    """Migrates legacy bilingual columns to *_translation tables. No-op on fresh DB."""
+    with engine.connect() as conn:
+        rows = conn.execute(text("PRAGMA table_info(capacity)")).fetchall()
+        if not any(r[1] == "label_fr" for r in rows):
+            return  # Fresh v2 DB or already migrated
+
+    # Legacy schema detected — use raw DBAPI connection to allow PRAGMA outside transaction
+    raw = engine.raw_connection()
+    try:
+        cur = raw.cursor()
+        cur.execute("PRAGMA foreign_keys = OFF")
+
+        # Copy capacity text content into capacity_translation
+        for lang in ("fr", "en"):
+            cur.execute(
+                "INSERT OR IGNORE INTO capacity_translation "
+                "(capacity_id, lang, label, definition, central_function, "
+                " observable, risk_insufficient, risk_excessive) "
+                f"SELECT capacity_id, ?, "
+                f"  COALESCE(label_{lang}, ''), definition_{lang}, central_function_{lang}, "
+                f"  observable_behaviors_{lang}, risk_insufficient_{lang}, risk_excessive_{lang} "
+                "FROM capacity",
+                (lang,),
+            )
+
+        # Rebuild capacity without legacy columns (SQLite requires full table rebuild)
+        cur.execute("""
+            CREATE TABLE capacity_v2 (
+                capacity_id  TEXT PRIMARY KEY,
+                level_code   TEXT NOT NULL REFERENCES level(level_code),
+                axis_number  INTEGER NOT NULL REFERENCES axis(axis_number),
+                pole_code    TEXT NOT NULL REFERENCES pole(pole_code),
+                is_canonical INTEGER NOT NULL DEFAULT 1
+                                 CHECK (is_canonical IN (0, 1)),
+                created_at   TEXT NOT NULL DEFAULT (datetime('now')),
+                updated_at   TEXT NOT NULL DEFAULT (datetime('now')),
+                UNIQUE (level_code, axis_number, pole_code)
+            )
+        """)
+        cur.execute(
+            "INSERT INTO capacity_v2 "
+            "  SELECT capacity_id, level_code, axis_number, pole_code, "
+            "         is_canonical, created_at, updated_at FROM capacity"
+        )
+        cur.execute("DROP TABLE capacity")
+        cur.execute("ALTER TABLE capacity_v2 RENAME TO capacity")
+
+        cur.execute("PRAGMA foreign_keys = ON")
+        raw.commit()
+    except Exception:
+        raw.rollback()
+        raise
+    finally:
+        raw.close()
+
+
+# ---------------------------------------------------------------------------
+# Reference data seeding
+# ---------------------------------------------------------------------------
+
+_LEVELS = [
+    Level(
+        level_code="S",
+        display_order=1,
+        unit="Strategic Pivot Logics",
+        measurement_scale="S6_Maturity_Levels_and_Learning_Loops.md",
+    ),
+    Level(
+        level_code="O",
+        display_order=2,
+        unit="Organizational Capabilities",
+        measurement_scale="O6_Maturity_Levels.md",
+    ),
+    Level(
+        level_code="I",
+        display_order=3,
+        unit="Individual Competencies",
+        measurement_scale="I6_EQF_Proficiency_Levels.md",
+    ),
+]
+
+_AXES = [
+    Axis(axis_number=1, name="Direction", tension_pole_a="Stability", tension_pole_b="Change"),
+    Axis(axis_number=2, name="Coordination", tension_pole_a="Autonomy", tension_pole_b="Interdependence"),
+    Axis(axis_number=3, name="Realization", tension_pole_a="Direct", tension_pole_b="Mediated"),
+]
+
+_POLES = [
+    Pole(pole_code="a", name="Agentive", characteristics="Stabilizing / Individualizing / Direct"),
+    Pole(pole_code="b", name="Instrumental", characteristics="Transforming / Collectivizing / Mediated"),
+]
+
+_OBSERVABLE_CATEGORIES = [
+    ObservableCategory(category_code="OK", display_order=1),
+    ObservableCategory(category_code="EXC", display_order=2),
+    ObservableCategory(category_code="DEP", display_order=3),
+    ObservableCategory(category_code="INS", display_order=4),
+]
+
+_DEFAULT_SETTINGS = [
+    ("active_language", "fr"),
+    ("last_capacity_id", ""),
+]
+
+# 18 canonical capacities: (level_code, axis_number, pole_code)
+_CANONICAL_CAPACITIES: list[tuple[str, int, str]] = [
+    ("S", 1, "a"), ("S", 1, "b"),
+    ("S", 2, "a"), ("S", 2, "b"),
+    ("S", 3, "a"), ("S", 3, "b"),
+    ("O", 1, "a"), ("O", 1, "b"),
+    ("O", 2, "a"), ("O", 2, "b"),
+    ("O", 3, "a"), ("O", 3, "b"),
+    ("I", 1, "a"), ("I", 1, "b"),
+    ("I", 2, "a"), ("I", 2, "b"),
+    ("I", 3, "a"), ("I", 3, "b"),
+]
+
+
+def _seed_reference_data(engine: Engine) -> None:
+    factory = get_session_factory(engine)
+    with factory() as session:
+        for obj in [*_LEVELS, *_AXES, *_POLES, *_OBSERVABLE_CATEGORIES]:
+            session.merge(obj)
+
+        # AppSetting: only insert defaults — never overwrite user-changed values
+        for key, default_value in _DEFAULT_SETTINGS:
+            if session.get(AppSetting, key) is None:
+                session.add(AppSetting(key=key, value=default_value))
+
+        session.commit()
+
+
+def _seed_capacities(engine: Engine) -> None:
+    """Seeds the 18 canonical Capacity rows with a stub FR translation and empty Coaching."""
+    factory = get_session_factory(engine)
+    with factory() as session:
+        for level_code, axis_number, pole_code in _CANONICAL_CAPACITIES:
+            capacity_id = f"{level_code}{axis_number}{pole_code}"
+            if session.get(Capacity, capacity_id) is not None:
+                continue  # Already seeded — idempotent
+
+            session.add(Capacity(
+                capacity_id=capacity_id,
+                level_code=level_code,
+                axis_number=axis_number,
+                pole_code=pole_code,
+                is_canonical=True,
+            ))
+            session.add(CapacityTranslation(
+                capacity_id=capacity_id,
+                lang="fr",
+                label=capacity_id,
+            ))
+            session.add(Coaching(capacity_id=capacity_id))
+
+        session.commit()
