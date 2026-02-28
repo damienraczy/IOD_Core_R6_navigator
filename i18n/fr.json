@@ -1,0 +1,108 @@
+{
+  "_comment": "French UI strings for R6 Navigator. Keys are used via i18n.t('key').",
+
+  "app.title": "R6 Navigator",
+  "app.title_with_capacity": "R6 Navigator — {capacity_id} {label}",
+
+  "lang.fr": "Français",
+  "lang.en": "English",
+
+  "nav.filter.level": "Niveau",
+  "nav.filter.axis": "Axe",
+  "nav.filter.pole": "Pôle",
+  "nav.filter.all": "Tous",
+
+  "level.S": "Stratégique",
+  "level.O": "Organisationnel",
+  "level.I": "Individuel",
+
+  "axis.1": "Direction",
+  "axis.2": "Coordination",
+  "axis.3": "Réalisation",
+
+  "pole.a": "Agentif",
+  "pole.b": "Instrumental",
+
+  "category.OK":  "✅ Manifeste",
+  "category.EXC": "⚠️ Excessif",
+  "category.DEP": "🔼 Dépasse",
+  "category.INS": "❌ Insuffisant",
+
+  "tab.fiche": "Fiche",
+  "tab.questions": "Questions",
+  "tab.coaching": "Coaching",
+
+  "fiche.level": "Niveau",
+  "fiche.axis": "Axe",
+  "fiche.pole": "Pôle",
+  "fiche.code": "Code",
+  "fiche.label": "Intitulé",
+  "fiche.definition": "Définition",
+  "fiche.central_function": "Fonction centrale",
+  "fiche.observable": "Observable",
+  "fiche.risk_insufficient": "Risque si insuffisant",
+  "fiche.risk_excessive": "Risque si excessif",
+
+  "questions.section_title": "Questions",
+  "questions.new": "+ Nouvelle question",
+  "questions.items_title": "Manifestations observables",
+  "questions.new_item": "+ Nouvel item",
+  "questions.category_label": "Catégorie",
+
+  "coaching.reflection_themes": "Thèmes de réflexion",
+  "coaching.intervention_levers": "Leviers d'intervention",
+  "coaching.recommended_missions": "Missions à envisager",
+
+  "isomorphism.label": "Capacités sœurs :",
+  "isomorphism.arrow": "←isomorphe→",
+
+  "btn.new": "Nouveau",
+  "btn.edit": "Modifier",
+  "btn.save": "Enregistrer",
+  "btn.cancel": "Annuler",
+  "btn.delete": "Supprimer",
+  "btn.save_db": "Sauvegarder",
+  "btn.restore_db": "Restaurer",
+  "btn.export_docx": "Créer DOCX",
+  "btn.generate": "Générer",
+  "btn.move_up": "↑",
+  "btn.move_down": "↓",
+  "btn.remove": "✕",
+
+  "dialog.new_capacity.title": "Nouvelle capacité",
+  "dialog.new_capacity.level": "Niveau",
+  "dialog.new_capacity.axis": "Axe",
+  "dialog.new_capacity.pole": "Pôle",
+  "dialog.new_capacity.label_fr": "Intitulé (fr) *",
+  "dialog.new_capacity.duplicate": "Cette combinaison niveau/axe/pôle existe déjà ({capacity_id}).",
+
+  "dialog.delete.title": "Confirmer la suppression",
+  "dialog.delete.message": "Supprimer la capacité {capacity_id} ?",
+  "dialog.delete.canonical_warning": "⚠️ Cette capacité fait partie du référentiel R6 standard. Sa suppression modifie l'intégrité du modèle.",
+  "dialog.delete.canonical_confirm": "Je confirme vouloir supprimer une capacité canonique.",
+
+  "dialog.unsaved.title": "Modifications non enregistrées",
+  "dialog.unsaved.message": "Des modifications sont en cours. Que souhaitez-vous faire ?",
+  "dialog.unsaved.save": "Enregistrer",
+  "dialog.unsaved.discard": "Abandonner",
+  "dialog.unsaved.cancel": "Annuler",
+
+  "dialog.docx.title": "Exporter en DOCX",
+  "dialog.docx.scope_current": "Capacité courante",
+  "dialog.docx.scope_all": "Toutes les capacités",
+  "dialog.docx.include": "Inclure",
+  "dialog.docx.language": "Langue d'export",
+
+  "dialog.restore.title": "Restaurer la base",
+  "dialog.restore.message": "Choisir un fichier de sauvegarde (.db). La base active sera remplacée.",
+  "dialog.restore.confirm": "Cette action remplace toutes les données actuelles. Continuer ?",
+  "dialog.restore.invalid": "Le fichier sélectionné n'est pas une base SQLite valide.",
+
+  "dialog.save_db.success": "Sauvegarde créée : {path}",
+
+  "error.db": "Erreur de base de données : {message}",
+  "error.export": "Erreur lors de l'export : {message}",
+  "error.required_field": "Ce champ est obligatoire.",
+
+  "validation.label_fr_required": "L'intitulé (fr) est obligatoire."
+}
