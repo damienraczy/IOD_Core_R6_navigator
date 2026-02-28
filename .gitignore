@@ -35,3 +35,7 @@ build/
 # Outils de développement
 .claude/
 .zed/
+
+# Dossiers locaux non versionnés
+old/
+fiches/
