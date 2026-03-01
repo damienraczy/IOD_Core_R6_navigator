@@ -75,7 +75,7 @@ def generate_fiche(capacity_id: str, lang: str) -> GeneratedFiche:
     url = ollama_cfg["url"]
     model = ollama_cfg["model"]
     timeout = int(ollama_cfg.get("timeout", 10))
-    system_prompt = params.get("system_prompt", "")
+    system_prompt = _load_system_prompt()
 
     axioms = _load_axioms()
     canonical_name = _load_canonical_name(capacity_id, lang)
@@ -128,7 +128,7 @@ def generate_fiche_risque(capacity_id: str, lang: str) -> GeneratedRisque:
     url = ollama_cfg["url"]
     model = ollama_cfg["model"]
     timeout = int(ollama_cfg.get("timeout", 10))
-    system_prompt = params.get("system_prompt", "")
+    system_prompt = _load_system_prompt()
 
     axioms = _load_axioms()
     canonical_name = _load_canonical_name(capacity_id, lang)
@@ -181,7 +181,7 @@ def generate_questions(capacity_id: str, lang: str) -> list[str]:
     url = ollama_cfg["url"]
     model = ollama_cfg["model"]
     timeout = int(ollama_cfg.get("timeout", 10))
-    system_prompt = params.get("system_prompt", "")
+    system_prompt = _load_system_prompt()
 
     axioms = _load_axioms()
     canonical_name = _load_canonical_name(capacity_id, lang)
@@ -238,7 +238,7 @@ def generate_questions_items(capacity_id: str, lang: str) -> dict[str, list[str]
     url = ollama_cfg["url"]
     model = ollama_cfg["model"]
     timeout = int(ollama_cfg.get("timeout", 10))
-    system_prompt = params.get("system_prompt", "")
+    system_prompt = _load_system_prompt()
 
     axioms = _load_axioms()
     canonical_name = _load_canonical_name(capacity_id, lang)
@@ -291,7 +291,7 @@ def generate_coaching(capacity_id: str, lang: str) -> GeneratedCoaching:
     url = ollama_cfg["url"]
     model = ollama_cfg["model"]
     timeout = int(ollama_cfg.get("timeout", 10))
-    system_prompt = params.get("system_prompt", "")
+    system_prompt = _load_system_prompt()
 
     axioms = _load_axioms()
     canonical_name = _load_canonical_name(capacity_id, lang)
@@ -357,7 +357,7 @@ def translate_fiche(
     url = ollama_cfg["url"]
     model = ollama_cfg["model"]
     timeout = int(ollama_cfg.get("timeout", 10))
-    system_prompt = params.get("system_prompt", "")
+    system_prompt = _load_system_prompt()
 
     axioms = _load_axioms()
     level_code = capacity_id[0]
@@ -414,7 +414,7 @@ def translate_questions(
     url = ollama_cfg["url"]
     model = ollama_cfg["model"]
     timeout = int(ollama_cfg.get("timeout", 10))
-    system_prompt = params.get("system_prompt", "")
+    system_prompt = _load_system_prompt()
 
     axioms = _load_axioms()
     level_code = capacity_id[0]
@@ -464,7 +464,7 @@ def translate_observable_items(
     url = ollama_cfg["url"]
     model = ollama_cfg["model"]
     timeout = int(ollama_cfg.get("timeout", 10))
-    system_prompt = params.get("system_prompt", "")
+    system_prompt = _load_system_prompt()
 
     axioms = _load_axioms()
     level_code = capacity_id[0]
@@ -513,7 +513,7 @@ def translate_coaching(
     url = ollama_cfg["url"]
     model = ollama_cfg["model"]
     timeout = int(ollama_cfg.get("timeout", 10))
-    system_prompt = params.get("system_prompt", "")
+    system_prompt = _load_system_prompt()
 
     axioms = _load_axioms()
     level_code = capacity_id[0]
@@ -546,6 +546,12 @@ def _load_params() -> dict:
     params_path = _PROJECT_ROOT / "params.yml"
     with open(params_path, encoding="utf-8") as f:
         return yaml.safe_load(f)
+
+
+def _load_system_prompt() -> str:
+    path = Path(__file__).parent / "prompt" / "system_01.txt"
+    with open(path, encoding="utf-8") as f:
+        return f.read()
 
 
 def _load_axioms() -> dict:

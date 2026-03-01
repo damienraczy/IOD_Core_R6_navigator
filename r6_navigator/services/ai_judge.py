@@ -14,6 +14,7 @@ from pathlib import Path
 
 import yaml
 
+from r6_navigator.services.ai_generate import _load_system_prompt
 from r6_navigator.services.prompt import load_prompt
 
 _PACKAGE_DIR = Path(__file__).parent.parent  # r6_navigator/
@@ -148,7 +149,7 @@ def _run_judges(
     url = ollama_cfg["url"]
     model = ollama_cfg["model_judge"]
     timeout = int(ollama_cfg.get("timeout", 60))
-    system_prompt = params.get("system_prompt", "")
+    system_prompt = _load_system_prompt()
 
     axioms = _load_axioms()
     ontology = axioms["r6_ontology"]
