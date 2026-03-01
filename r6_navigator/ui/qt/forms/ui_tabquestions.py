@@ -16,9 +16,9 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
     QImage, QKeySequence, QLinearGradient, QPainter,
     QPalette, QPixmap, QRadialGradient, QTransform)
 from PySide6.QtWidgets import (QAbstractItemView, QApplication, QFrame, QHBoxLayout,
-    QHeaderView, QLabel, QPushButton, QScrollArea,
-    QSizePolicy, QSpacerItem, QTableWidget, QTableWidgetItem,
-    QVBoxLayout, QWidget)
+    QHeaderView, QLabel, QPushButton, QSizePolicy,
+    QSpacerItem, QTableWidget, QTableWidgetItem, QVBoxLayout,
+    QWidget)
 
 class Ui_TabQuestions(object):
     def setupUi(self, TabQuestions):
@@ -56,25 +56,20 @@ class Ui_TabQuestions(object):
 
         self.main_layout.addLayout(self.questions_header)
 
-        self.scroll_questions = QScrollArea(TabQuestions)
-        self.scroll_questions.setObjectName(u"scroll_questions")
-        self.scroll_questions.setWidgetResizable(True)
-        self.scroll_questions.setFrameShape(QFrame.StyledPanel)
-        self.scroll_questions.setMinimumSize(QSize(0, 120))
-        self.questions_container = QWidget()
-        self.questions_container.setObjectName(u"questions_container")
-        self.questions_container.setGeometry(QRect(0, 0, 616, 118))
-        self.questions_layout = QVBoxLayout(self.questions_container)
-        self.questions_layout.setSpacing(2)
-        self.questions_layout.setObjectName(u"questions_layout")
-        self.questions_layout.setContentsMargins(4, 4, 4, 4)
-        self.questions_spacer = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
+        self.table_questions = QTableWidget(TabQuestions)
+        if (self.table_questions.columnCount() < 3):
+            self.table_questions.setColumnCount(3)
+        __qtablewidgetitem = QTableWidgetItem()
+        self.table_questions.setHorizontalHeaderItem(0, __qtablewidgetitem)
+        __qtablewidgetitem1 = QTableWidgetItem()
+        self.table_questions.setHorizontalHeaderItem(1, __qtablewidgetitem1)
+        __qtablewidgetitem2 = QTableWidgetItem()
+        self.table_questions.setHorizontalHeaderItem(2, __qtablewidgetitem2)
+        self.table_questions.setObjectName(u"table_questions")
+        self.table_questions.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.table_questions.setAlternatingRowColors(True)
 
-        self.questions_layout.addItem(self.questions_spacer)
-
-        self.scroll_questions.setWidget(self.questions_container)
-
-        self.main_layout.addWidget(self.scroll_questions)
+        self.main_layout.addWidget(self.table_questions)
 
         self.line_separator = QFrame(TabQuestions)
         self.line_separator.setObjectName(u"line_separator")
@@ -111,12 +106,12 @@ class Ui_TabQuestions(object):
         self.table_observable_items = QTableWidget(TabQuestions)
         if (self.table_observable_items.columnCount() < 3):
             self.table_observable_items.setColumnCount(3)
-        __qtablewidgetitem = QTableWidgetItem()
-        self.table_observable_items.setHorizontalHeaderItem(0, __qtablewidgetitem)
-        __qtablewidgetitem1 = QTableWidgetItem()
-        self.table_observable_items.setHorizontalHeaderItem(1, __qtablewidgetitem1)
-        __qtablewidgetitem2 = QTableWidgetItem()
-        self.table_observable_items.setHorizontalHeaderItem(2, __qtablewidgetitem2)
+        __qtablewidgetitem3 = QTableWidgetItem()
+        self.table_observable_items.setHorizontalHeaderItem(0, __qtablewidgetitem3)
+        __qtablewidgetitem4 = QTableWidgetItem()
+        self.table_observable_items.setHorizontalHeaderItem(1, __qtablewidgetitem4)
+        __qtablewidgetitem5 = QTableWidgetItem()
+        self.table_observable_items.setHorizontalHeaderItem(2, __qtablewidgetitem5)
         self.table_observable_items.setObjectName(u"table_observable_items")
         self.table_observable_items.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.table_observable_items.setAlternatingRowColors(True)
@@ -136,18 +131,24 @@ class Ui_TabQuestions(object):
         self.btn_generer.setToolTip(QCoreApplication.translate("TabQuestions", u"G\u00e9n\u00e9rer questions et manifestations via IA", None))
 #endif // QT_CONFIG(tooltip)
         self.btn_new_question.setText(QCoreApplication.translate("TabQuestions", u"+ Nouvelle question", None))
+        ___qtablewidgetitem = self.table_questions.horizontalHeaderItem(0)
+        ___qtablewidgetitem.setText(QCoreApplication.translate("TabQuestions", u"#", None));
+        ___qtablewidgetitem1 = self.table_questions.horizontalHeaderItem(1)
+        ___qtablewidgetitem1.setText(QCoreApplication.translate("TabQuestions", u"Question", None));
+        ___qtablewidgetitem2 = self.table_questions.horizontalHeaderItem(2)
+        ___qtablewidgetitem2.setText(QCoreApplication.translate("TabQuestions", u"Actions", None));
         self.lbl_items_title.setText(QCoreApplication.translate("TabQuestions", u"Manifestations observables", None))
         self.btn_generer_items.setText(QCoreApplication.translate("TabQuestions", u"G\u00e9n\u00e9rer items", None))
 #if QT_CONFIG(tooltip)
         self.btn_generer_items.setToolTip(QCoreApplication.translate("TabQuestions", u"G\u00e9n\u00e9rer les manifestations observables via IA", None))
 #endif // QT_CONFIG(tooltip)
         self.btn_new_item.setText(QCoreApplication.translate("TabQuestions", u"+ Nouvel item", None))
-        ___qtablewidgetitem = self.table_observable_items.horizontalHeaderItem(0)
-        ___qtablewidgetitem.setText(QCoreApplication.translate("TabQuestions", u"Cat\u00e9gorie", None));
-        ___qtablewidgetitem1 = self.table_observable_items.horizontalHeaderItem(1)
-        ___qtablewidgetitem1.setText(QCoreApplication.translate("TabQuestions", u"Texte", None));
-        ___qtablewidgetitem2 = self.table_observable_items.horizontalHeaderItem(2)
-        ___qtablewidgetitem2.setText(QCoreApplication.translate("TabQuestions", u"Actions", None));
+        ___qtablewidgetitem3 = self.table_observable_items.horizontalHeaderItem(0)
+        ___qtablewidgetitem3.setText(QCoreApplication.translate("TabQuestions", u"Cat\u00e9gorie", None));
+        ___qtablewidgetitem4 = self.table_observable_items.horizontalHeaderItem(1)
+        ___qtablewidgetitem4.setText(QCoreApplication.translate("TabQuestions", u"Texte", None));
+        ___qtablewidgetitem5 = self.table_observable_items.horizontalHeaderItem(2)
+        ___qtablewidgetitem5.setText(QCoreApplication.translate("TabQuestions", u"Actions", None));
         pass
     # retranslateUi
 

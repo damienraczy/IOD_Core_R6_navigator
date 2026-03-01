@@ -1,8 +1,13 @@
 """Onglet Questions de R6 Navigator.
 
-Gère la liste des questions STAR (widgets _QuestionRow dynamiques) et
-le tableau des items observables (QTableWidget avec combos de catégorie).
-Supporte l'ajout, la suppression et le réordonnancement en mode édition.
+Gère la liste des questions STAR et le tableau des items observables.
+Les deux sections utilisent un QTableWidget avec la même structure de colonnes
+(N° / texte / actions), ce qui harmonise le look & feel et assure un
+redimensionnement correct avec la fenêtre.
+
+Chaque section dispose de son propre bouton [Générer] :
+- btn_generer      → generate_questions()       → 10 questions uniquement
+- btn_generer_items → generate_questions_items() → 4×5 items uniquement
 """
 
 from __future__ import annotations
@@ -11,12 +16,8 @@ from PySide6.QtCore import QThread, Qt, Signal
 from PySide6.QtWidgets import (
     QComboBox,
     QHBoxLayout,
-    QLabel,
-    QLineEdit,
     QMessageBox,
     QPushButton,
-    QSizePolicy,
-    QSpacerItem,
     QTableWidgetItem,
     QWidget,
 )
@@ -31,7 +32,7 @@ _CATEGORY_CODES = ("OK", "EXC", "DEP", "INS")
 
 
 # ────────────────────────────────────────────────────────────
-# Worker de génération IA (thread de fond)
+# Worker de génération des questions (thread de fond)
 # ────────────────────────────────────────────────────────────
 
 class _GenerateWorker(QThread):
@@ -133,119 +134,14 @@ class _JudgeWorker(QThread):
 
 
 # ────────────────────────────────────────────────────────────
-# Widget ligne de question
-# ────────────────────────────────────────────────────────────
-
-class _QuestionRow(QWidget):
-    """Widget représentant une question STAR dans la liste.
-
-    Affiche un numéro, un champ de texte et, en mode édition,
-    des boutons de déplacement et de suppression.
-
-    Signals:
-        changed: Émis quand le texte de la question est modifié.
-        remove_requested: Émis avec ce widget quand l'utilisateur clique sur Supprimer.
-        move_up_requested: Émis avec ce widget quand l'utilisateur clique sur Monter.
-        move_down_requested: Émis avec ce widget quand l'utilisateur clique sur Descendre.
-    """
-
-    changed = Signal()
-    remove_requested = Signal(object)
-    move_up_requested = Signal(object)
-    move_down_requested = Signal(object)
-
-    def __init__(
-        self,
-        index: int,
-        question_id: int | None,
-        text: str,
-        editing: bool,
-        parent: QWidget | None = None,
-    ) -> None:
-        """Crée une ligne de question.
-
-        Args:
-            index: Numéro d'ordre affiché devant la question (commence à 1).
-            question_id: Identifiant DB de la question, ou None pour une nouvelle.
-            text: Texte initial de la question.
-            editing: True pour afficher les boutons d'action dès la création.
-            parent: Widget parent Qt.
-        """
-        super().__init__(parent)
-        self.question_id = question_id
-
-        row = QHBoxLayout(self)
-        row.setContentsMargins(0, 2, 0, 2)
-        row.setSpacing(4)
-
-        self._lbl_num = QLabel(f"{index}.")
-        self._lbl_num.setFixedWidth(24)
-        row.addWidget(self._lbl_num)
-
-        self._edit = QLineEdit(text)
-        self._edit.setReadOnly(not editing)
-        self._edit.textChanged.connect(self.changed)
-        row.addWidget(self._edit)
-
-        self._btn_up = QPushButton(t("btn.move_up"))
-        self._btn_up.setFixedWidth(28)
-        self._btn_up.clicked.connect(lambda: self.move_up_requested.emit(self))
-        row.addWidget(self._btn_up)
-
-        self._btn_down = QPushButton(t("btn.move_down"))
-        self._btn_down.setFixedWidth(28)
-        self._btn_down.clicked.connect(lambda: self.move_down_requested.emit(self))
-        row.addWidget(self._btn_down)
-
-        self._btn_del = QPushButton(t("btn.remove"))
-        self._btn_del.setFixedWidth(28)
-        self._btn_del.clicked.connect(lambda: self.remove_requested.emit(self))
-        row.addWidget(self._btn_del)
-
-        self._set_edit_controls_visible(editing)
-
-    def set_editing(self, editing: bool) -> None:
-        """Bascule le champ et les boutons d'action selon le mode édition.
-
-        Args:
-            editing: True pour activer l'édition et afficher les boutons.
-        """
-        self._edit.setReadOnly(not editing)
-        self._set_edit_controls_visible(editing)
-
-    def set_index(self, index: int) -> None:
-        """Met à jour le numéro d'ordre affiché.
-
-        Args:
-            index: Nouveau numéro (commence à 1).
-        """
-        self._lbl_num.setText(f"{index}.")
-
-    def get_text(self) -> str:
-        """Retourne le texte saisi dans le champ de la question.
-
-        Returns:
-            Texte courant du QLineEdit.
-        """
-        return self._edit.text()
-
-    def _set_edit_controls_visible(self, visible: bool) -> None:
-        """Affiche ou masque les boutons Monter / Descendre / Supprimer.
-
-        Args:
-            visible: True pour afficher, False pour masquer.
-        """
-        self._btn_up.setVisible(visible)
-        self._btn_down.setVisible(visible)
-        self._btn_del.setVisible(visible)
-
-
-# ────────────────────────────────────────────────────────────
 # Onglet Questions
 # ────────────────────────────────────────────────────────────
 
 class TabQuestions(QWidget, Ui_TabQuestions):
-    """Onglet Questions — liste STAR + tableau des items observables.
+    """Onglet Questions — tableau des questions STAR + tableau des items observables.
+
+    Les deux sections utilisent un QTableWidget (colonnes N° | texte | actions)
+    pour un look & feel uniforme et un redimensionnement naturel avec la fenêtre.
 
     Signals:
         dirty_changed: Émis avec True quand des modifications non sauvegardées
@@ -266,10 +162,12 @@ class TabQuestions(QWidget, Ui_TabQuestions):
         self._current_capacity: Capacity | None = None
         self._editing = False
         self._dirty = False
-        self._question_rows: list[_QuestionRow] = []
-        # Structure en mémoire des items observables : liste de dicts
-        # {"item_id": int|None, "category_code": str, "text": str}.
+
+        # Données en mémoire : liste de dicts {"question_id": int|None, "text": str}
+        self._question_data: list[dict] = []
+        # Données en mémoire : liste de dicts {"item_id": int|None, "category_code": str, "text": str}
         self._item_data: list[dict] = []
+
         self._deleted_question_ids: list[int] = []
         self._deleted_item_ids: list[int] = []
         self._worker: _GenerateWorker | None = None
@@ -323,7 +221,7 @@ class TabQuestions(QWidget, Ui_TabQuestions):
         self._original_snapshot = self._take_snapshot()
 
     def set_edit_mode(self, editing: bool) -> None:
-        """Active ou désactive le mode édition sur les questions et le tableau des items.
+        """Active ou désactive le mode édition sur les deux tableaux.
 
         Args:
             editing: True pour passer en mode édition, False pour lecture seule.
@@ -331,8 +229,7 @@ class TabQuestions(QWidget, Ui_TabQuestions):
         self._editing = editing
         self.btn_new_question.setVisible(editing)
         self.btn_new_item.setVisible(editing)
-        for row in self._question_rows:
-            row.set_editing(editing)
+        self._rebuild_questions_table()
         self._rebuild_items_table()
 
     def save(self) -> None:
@@ -352,20 +249,20 @@ class TabQuestions(QWidget, Ui_TabQuestions):
 
             # Upsert des questions avec collecte des IDs pour le réordonnancement.
             ordered_q_ids: list[int] = []
-            for row in self._question_rows:
-                text = row.get_text().strip()
-                if row.question_id is None:
+            for item in self._question_data:
+                text = item["text"].strip()
+                if item["question_id"] is None:
                     if text:
                         q = crud.create_question(
                             session, self._current_capacity.capacity_id, text, lang
                         )
-                        row.question_id = q.question_id
+                        item["question_id"] = q.question_id
                         ordered_q_ids.append(q.question_id)
                 else:
                     crud.upsert_question_translation(
-                        session, row.question_id, lang, text=text
+                        session, item["question_id"], lang, text=text
                     )
-                    ordered_q_ids.append(row.question_id)
+                    ordered_q_ids.append(item["question_id"])
             if ordered_q_ids:
                 crud.reorder_questions(
                     session, self._current_capacity.capacity_id, ordered_q_ids
@@ -420,16 +317,17 @@ class TabQuestions(QWidget, Ui_TabQuestions):
             self._load_all()
 
     # ────────────────────────────────────────────────────────
-    # Méthodes privées
+    # Méthodes privées — initialisation
     # ────────────────────────────────────────────────────────
 
     def _setup_connections(self) -> None:
-        """Connecte les boutons d'ajout, de génération, de jugement et le signal de modification du tableau."""
+        """Connecte les boutons et les signaux de modification des deux tableaux."""
         self.btn_generer.clicked.connect(self._on_generate)
         self.btn_generer_items.clicked.connect(self._on_generate_items)
         self.btn_juger.clicked.connect(self._on_juger_clicked)
         self.btn_new_question.clicked.connect(self._add_new_question)
         self.btn_new_item.clicked.connect(self._add_new_item)
+        self.table_questions.itemChanged.connect(self._on_questions_item_changed)
         self.table_observable_items.itemChanged.connect(self._on_table_item_changed)
 
     def _retranslate(self) -> None:
@@ -441,10 +339,20 @@ class TabQuestions(QWidget, Ui_TabQuestions):
         self.btn_new_question.setText(t("questions.new"))
         self.lbl_items_title.setText(t("questions.items_title"))
         self.btn_new_item.setText(t("questions.new_item"))
-        h = self.table_observable_items
-        h.horizontalHeaderItem(0).setText(t("questions.category_label"))
-        h.horizontalHeaderItem(1).setText(t("table.col.text"))
-        h.horizontalHeaderItem(2).setText(t("table.col.actions"))
+
+        hq = self.table_questions
+        hq.horizontalHeaderItem(0).setText(t("table.col.number"))
+        hq.horizontalHeaderItem(1).setText(t("table.col.question"))
+        hq.horizontalHeaderItem(2).setText(t("table.col.actions"))
+
+        hi = self.table_observable_items
+        hi.horizontalHeaderItem(0).setText(t("questions.category_label"))
+        hi.horizontalHeaderItem(1).setText(t("table.col.text"))
+        hi.horizontalHeaderItem(2).setText(t("table.col.actions"))
+
+    # ────────────────────────────────────────────────────────
+    # Chargement depuis la DB
+    # ────────────────────────────────────────────────────────
 
     def _load_all(self) -> None:
         """Recharge questions et items depuis la base de données."""
@@ -452,50 +360,20 @@ class TabQuestions(QWidget, Ui_TabQuestions):
         self._load_observable_items()
 
     def _load_questions(self) -> None:
-        """Charge les questions STAR depuis la DB et reconstruit les widgets lignes."""
+        """Charge les questions STAR depuis la DB et reconstruit le tableau."""
         if self._session_factory is None or self._current_capacity is None:
             return
         lang = current_lang()
         with self._session_factory() as session:
             questions = crud.get_questions(session, self._current_capacity.capacity_id)
-            q_data: list[tuple[int, str]] = []
+            self._question_data = []
             for q in questions:
                 trans = crud.get_question_translation(session, q.question_id, lang)
-                q_data.append((q.question_id, trans.text if trans else ""))
-        self._rebuild_question_rows(q_data)
-
-    def _rebuild_question_rows(self, q_data: list[tuple[int, str]]) -> None:
-        """Reconstruit les widgets _QuestionRow dans le layout questions.
-
-        Supprime le spacer final avant de reconstruire, puis le remet en place.
-
-        Args:
-            q_data: Liste de tuples (question_id, texte) dans l'ordre d'affichage.
-        """
-        # Suppression du spacer expansible (toujours en dernière position).
-        count = self.questions_layout.count()
-        if count > 0 and self.questions_layout.itemAt(count - 1).spacerItem():
-            self.questions_layout.takeAt(count - 1)
-
-        for row in self._question_rows:
-            self.questions_layout.removeWidget(row)
-            row.deleteLater()
-        self._question_rows.clear()
-
-        for i, (qid, text) in enumerate(q_data):
-            row = _QuestionRow(i + 1, qid, text, self._editing, self.questions_container)
-            row.changed.connect(self._mark_dirty)
-            row.remove_requested.connect(self._remove_question_row)
-            row.move_up_requested.connect(self._move_question_up)
-            row.move_down_requested.connect(self._move_question_down)
-            self.questions_layout.addWidget(row)
-            self._question_rows.append(row)
-
-        # Réajout du spacer expansible pour pousser les lignes vers le haut.
-        self.questions_layout.addItem(
-            QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
-        )
-        self.btn_new_question.setVisible(self._editing)
+                self._question_data.append({
+                    "question_id": q.question_id,
+                    "text": trans.text if trans else "",
+                })
+        self._rebuild_questions_table()
 
     def _load_observable_items(self) -> None:
         """Charge les items observables depuis la DB et reconstruit le tableau."""
@@ -516,11 +394,74 @@ class TabQuestions(QWidget, Ui_TabQuestions):
                 )
         self._rebuild_items_table()
 
+    # ────────────────────────────────────────────────────────
+    # Reconstruction des tableaux
+    # ────────────────────────────────────────────────────────
+
+    def _rebuild_questions_table(self) -> None:
+        """Reconstruit le QTableWidget des questions depuis _question_data.
+
+        En mode édition : colonne Texte éditable, colonne Actions = boutons.
+        En lecture seule : cellules non éditables, colonne Actions vide.
+        Structure des colonnes : # | Question | Actions
+        """
+        table = self.table_questions
+        table.blockSignals(True)
+        table.setRowCount(0)
+
+        for idx, item in enumerate(self._question_data):
+            table.insertRow(idx)
+
+            # Colonne 0 — Numéro (toujours non éditable).
+            num_item = QTableWidgetItem(str(idx + 1))
+            num_item.setFlags(num_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+            table.setItem(idx, 0, num_item)
+
+            # Colonne 1 — Texte de la question.
+            text_item = QTableWidgetItem(item["text"])
+            if not self._editing:
+                text_item.setFlags(text_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+            table.setItem(idx, 1, text_item)
+
+            # Colonne 2 — Actions (visibles uniquement en mode édition).
+            if self._editing:
+                actions_w = QWidget()
+                al = QHBoxLayout(actions_w)
+                al.setContentsMargins(2, 0, 2, 0)
+                al.setSpacing(2)
+                btn_up = QPushButton(t("btn.move_up"))
+                btn_up.setFixedWidth(28)
+                btn_up.clicked.connect(lambda _, i=idx: self._move_question_up(i))
+                btn_dn = QPushButton(t("btn.move_down"))
+                btn_dn.setFixedWidth(28)
+                btn_dn.clicked.connect(lambda _, i=idx: self._move_question_down(i))
+                btn_del = QPushButton(t("btn.remove"))
+                btn_del.setFixedWidth(28)
+                btn_del.clicked.connect(lambda _, i=idx: self._remove_question(i))
+                al.addWidget(btn_up)
+                al.addWidget(btn_dn)
+                al.addWidget(btn_del)
+                table.setCellWidget(idx, 2, actions_w)
+            else:
+                empty = QTableWidgetItem()
+                empty.setFlags(empty.flags() & ~Qt.ItemFlag.ItemIsEditable)
+                table.setItem(idx, 2, empty)
+
+        table.blockSignals(False)
+
+        header = table.horizontalHeader()
+        header.setSectionResizeMode(0, header.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(1, header.ResizeMode.Stretch)
+        header.setSectionResizeMode(2, header.ResizeMode.ResizeToContents)
+
+        self.btn_new_question.setVisible(self._editing)
+
     def _rebuild_items_table(self) -> None:
         """Reconstruit le QTableWidget des items observables depuis _item_data.
 
         En mode édition : colonne Catégorie = QComboBox, colonne Actions = boutons.
         En lecture seule : cellules non éditables, colonne Actions vide.
+        Structure des colonnes : Catégorie | Texte | Actions
         """
         table = self.table_observable_items
         table.blockSignals(True)
@@ -536,7 +477,6 @@ class TabQuestions(QWidget, Ui_TabQuestions):
                     combo.addItem(t(f"category.{code}"), code)
                 cur_idx = _CATEGORY_CODES.index(item["category_code"])
                 combo.setCurrentIndex(cur_idx)
-                # Capture de idx par argument par défaut pour éviter la capture tardive.
                 combo.currentIndexChanged.connect(
                     lambda _, i=idx, c=combo: self._on_item_category_changed(i, c)
                 )
@@ -578,7 +518,6 @@ class TabQuestions(QWidget, Ui_TabQuestions):
 
         table.blockSignals(False)
 
-        # Adaptation des largeurs de colonnes.
         header = table.horizontalHeader()
         header.setSectionResizeMode(0, header.ResizeMode.ResizeToContents)
         header.setSectionResizeMode(1, header.ResizeMode.Stretch)
@@ -587,92 +526,70 @@ class TabQuestions(QWidget, Ui_TabQuestions):
         self.btn_new_item.setVisible(self._editing)
 
     # ────────────────────────────────────────────────────────
-    # Actions sur les lignes de questions
+    # Actions sur les questions
     # ────────────────────────────────────────────────────────
 
     def _add_new_question(self) -> None:
-        """Ajoute une nouvelle ligne de question vide en fin de liste."""
-        # Suppression temporaire du spacer avant d'insérer la nouvelle ligne.
-        count = self.questions_layout.count()
-        if count > 0 and self.questions_layout.itemAt(count - 1).spacerItem():
-            self.questions_layout.takeAt(count - 1)
-
-        idx = len(self._question_rows) + 1
-        row = _QuestionRow(idx, None, "", True, self.questions_container)
-        row.changed.connect(self._mark_dirty)
-        row.remove_requested.connect(self._remove_question_row)
-        row.move_up_requested.connect(self._move_question_up)
-        row.move_down_requested.connect(self._move_question_down)
-        self.questions_layout.addWidget(row)
-        self._question_rows.append(row)
-
-        self.questions_layout.addItem(
-            QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
-        )
+        """Ajoute une nouvelle question vide en fin de liste."""
+        self._question_data.append({"question_id": None, "text": ""})
+        self._rebuild_questions_table()
         self._mark_dirty()
 
-    def _remove_question_row(self, row: _QuestionRow) -> None:
-        """Retire une ligne de question du layout et marque son ID pour suppression DB.
+    def _remove_question(self, idx: int) -> None:
+        """Supprime une question de la liste et marque son ID pour suppression DB.
 
         Args:
-            row: Widget _QuestionRow à supprimer.
+            idx: Index de la question à supprimer dans _question_data.
         """
-        if row.question_id is not None:
-            self._deleted_question_ids.append(row.question_id)
-        self.questions_layout.removeWidget(row)
-        row.deleteLater()
-        self._question_rows.remove(row)
-        # Renumérotation des lignes restantes.
-        for i, r in enumerate(self._question_rows):
-            r.set_index(i + 1)
+        if idx >= len(self._question_data):
+            return
+        qid = self._question_data[idx]["question_id"]
+        if qid is not None:
+            self._deleted_question_ids.append(qid)
+        self._question_data.pop(idx)
+        self._rebuild_questions_table()
         self._mark_dirty()
 
-    def _move_question_up(self, row: _QuestionRow) -> None:
+    def _move_question_up(self, idx: int) -> None:
         """Déplace une question d'une position vers le haut.
 
         Args:
-            row: Widget _QuestionRow à déplacer.
+            idx: Index de la question à déplacer dans _question_data.
         """
-        idx = self._question_rows.index(row)
-        if idx == 0:
+        if idx == 0 or idx >= len(self._question_data):
             return
-        self._question_rows[idx], self._question_rows[idx - 1] = (
-            self._question_rows[idx - 1],
-            self._question_rows[idx],
+        self._question_data[idx], self._question_data[idx - 1] = (
+            self._question_data[idx - 1],
+            self._question_data[idx],
         )
-        self._rebuild_question_layout()
+        self._rebuild_questions_table()
         self._mark_dirty()
 
-    def _move_question_down(self, row: _QuestionRow) -> None:
+    def _move_question_down(self, idx: int) -> None:
         """Déplace une question d'une position vers le bas.
 
         Args:
-            row: Widget _QuestionRow à déplacer.
+            idx: Index de la question à déplacer dans _question_data.
         """
-        idx = self._question_rows.index(row)
-        if idx >= len(self._question_rows) - 1:
+        if idx >= len(self._question_data) - 1:
             return
-        self._question_rows[idx], self._question_rows[idx + 1] = (
-            self._question_rows[idx + 1],
-            self._question_rows[idx],
+        self._question_data[idx], self._question_data[idx + 1] = (
+            self._question_data[idx + 1],
+            self._question_data[idx],
         )
-        self._rebuild_question_layout()
+        self._rebuild_questions_table()
         self._mark_dirty()
 
-    def _rebuild_question_layout(self) -> None:
-        """Réinsère les widgets _QuestionRow dans le layout selon leur ordre actuel.
+    def _on_questions_item_changed(self, item: QTableWidgetItem) -> None:
+        """Synchronise _question_data quand l'utilisateur édite une cellule de texte.
 
-        Vide entièrement le layout sans détruire les widgets, puis les réinsère
-        dans l'ordre de _question_rows avec leurs numéros mis à jour.
+        Args:
+            item: Cellule modifiée dans le QTableWidget des questions.
         """
-        while self.questions_layout.count():
-            self.questions_layout.takeAt(0)
-        for i, row in enumerate(self._question_rows):
-            row.set_index(i + 1)
-            self.questions_layout.addWidget(row)
-        self.questions_layout.addItem(
-            QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
-        )
+        row, col = item.row(), item.column()
+        if col == 1 and row < len(self._question_data):
+            self._question_data[row]["text"] = item.text()
+            self._mark_dirty()
 
     # ────────────────────────────────────────────────────────
     # Actions sur les items observables
@@ -701,7 +618,7 @@ class TabQuestions(QWidget, Ui_TabQuestions):
         """Synchronise _item_data quand l'utilisateur édite une cellule de texte.
 
         Args:
-            item: Cellule modifiée dans le QTableWidget.
+            item: Cellule modifiée dans le QTableWidget des items observables.
         """
         row, col = item.row(), item.column()
         if col == 1 and row < len(self._item_data):
@@ -724,7 +641,7 @@ class TabQuestions(QWidget, Ui_TabQuestions):
         self._mark_dirty()
 
     def _move_item_up(self, idx: int) -> None:
-        """Déplace un item observable d'une position vers le haut dans la liste.
+        """Déplace un item observable d'une position vers le haut.
 
         Args:
             idx: Index de l'item à déplacer dans _item_data.
@@ -739,7 +656,7 @@ class TabQuestions(QWidget, Ui_TabQuestions):
         self._mark_dirty()
 
     def _move_item_down(self, idx: int) -> None:
-        """Déplace un item observable d'une position vers le bas dans la liste.
+        """Déplace un item observable d'une position vers le bas.
 
         Args:
             idx: Index de l'item à déplacer dans _item_data.
@@ -754,11 +671,11 @@ class TabQuestions(QWidget, Ui_TabQuestions):
         self._mark_dirty()
 
     # ────────────────────────────────────────────────────────
-    # Génération IA
+    # Génération IA — Questions
     # ────────────────────────────────────────────────────────
 
     def _on_generate(self) -> None:
-        """Lance la génération IA dans un thread de fond si aucune n'est déjà en cours."""
+        """Lance la génération des questions dans un thread de fond."""
         if self._current_capacity is None:
             return
         if self._worker is not None and self._worker.isRunning():
@@ -774,8 +691,8 @@ class TabQuestions(QWidget, Ui_TabQuestions):
     def _on_generate_done(self, content) -> None:
         """Remplace les questions par le contenu généré.
 
-        Marque les questions existantes pour suppression, reconstruit les
-        widgets avec le nouveau contenu, puis marque comme modifié.
+        Marque les questions existantes pour suppression, reconstruit le
+        tableau avec le nouveau contenu, puis marque comme modifié.
         Les items observables ne sont pas touchés par ce bouton.
 
         Args:
@@ -785,14 +702,12 @@ class TabQuestions(QWidget, Ui_TabQuestions):
         self._worker = None
 
         # Marque les questions existantes pour suppression lors du prochain save().
-        for row in self._question_rows:
-            if row.question_id is not None:
-                self._deleted_question_ids.append(row.question_id)
+        for item in self._question_data:
+            if item["question_id"] is not None:
+                self._deleted_question_ids.append(item["question_id"])
 
-        # Reconstruit les lignes de questions depuis la liste générée.
-        q_data = [(None, text) for text in content]
-        self._rebuild_question_rows(q_data)
-
+        self._question_data = [{"question_id": None, "text": text} for text in content]
+        self._rebuild_questions_table()
         self._mark_dirty()
 
     def _on_generate_error(self, message: str) -> None:
@@ -836,12 +751,10 @@ class TabQuestions(QWidget, Ui_TabQuestions):
         self.btn_generer_items.setEnabled(True)
         self._items_worker = None
 
-        # Marque les items existants pour suppression lors du prochain save().
         for item in self._item_data:
             if item["item_id"] is not None:
                 self._deleted_item_ids.append(item["item_id"])
 
-        # Reconstruit les items observables en préservant l'ordre des catégories.
         self._item_data = []
         for code in _CATEGORY_CODES:
             for text in items.get(code, []):
@@ -877,8 +790,8 @@ class TabQuestions(QWidget, Ui_TabQuestions):
         return {
             "capacity_id": capacity_id,
             "questions": [
-                {"question_id": row.question_id, "text": row.get_text()}
-                for row in self._question_rows
+                {"question_id": item["question_id"], "text": item["text"]}
+                for item in self._question_data
             ],
             "observable_items": [
                 {
@@ -969,11 +882,14 @@ class TabQuestions(QWidget, Ui_TabQuestions):
         Args:
             content: Snapshot dict retourné par _take_snapshot().
         """
-        q_data = [
-            (q.get("question_id"), q.get("text", ""))
+        self._question_data = [
+            {
+                "question_id": q.get("question_id"),
+                "text": q.get("text", ""),
+            }
             for q in content.get("questions", [])
         ]
-        self._rebuild_question_rows(q_data)
+        self._rebuild_questions_table()
 
         self._item_data = [
             {

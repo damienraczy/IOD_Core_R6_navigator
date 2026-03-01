@@ -47,6 +47,8 @@
   "questions.items_title": "Observable manifestations",
   "questions.new_item": "+ New item",
   "questions.category_label": "Category",
+  "table.col.number": "#",
+  "table.col.question": "Question",
   "table.col.text": "Text",
   "table.col.actions": "Actions",
 

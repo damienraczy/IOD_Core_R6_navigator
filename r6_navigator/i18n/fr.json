@@ -47,6 +47,8 @@
   "questions.items_title": "Manifestations observables",
   "questions.new_item": "+ Nouvel item",
   "questions.category_label": "Catégorie",
+  "table.col.number": "#",
+  "table.col.question": "Question",
   "table.col.text": "Texte",
   "table.col.actions": "Actions",
 
