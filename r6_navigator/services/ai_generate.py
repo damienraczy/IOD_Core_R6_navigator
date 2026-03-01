@@ -714,9 +714,7 @@ def _halliday_context_for_level(spec: str, level_code: str) -> str:
             audit_section = after_audit.strip()
         parts.append(audit_section)
 
-    ret = "\n\n".join(parts)
-    print(ret)
-    return ret
+    return "\n\n".join(parts)
 
 
 def _load_canonical_name(capacity_id: str, lang: str) -> str:
