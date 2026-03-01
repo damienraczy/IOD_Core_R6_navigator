@@ -88,6 +88,13 @@ All fields read-only by default. Edit mode activated by `[Modifier]` button.
 | Risque si insuffisant | `QPlainTextEdit` | `risk_insufficient`        |
 | Risque si excessif    | `QPlainTextEdit` | `risk_excessive`           |
 
+**AI generation buttons** (always visible, independent of edit mode):
+
+| Button (`btn_*`) | Positioned near | Calls | Populates |
+|------------------|-----------------|-------|-----------|
+| `btn_generer` | Section header (top) | `generate_fiche()` | Intitulé, Définition, Fonction centrale |
+| `btn_generer_risque` | Risk fields header | `generate_fiche_risque()` | Risque si insuffisant, Risque si excessif |
+
 ---
 
 ## Tab: Questions
@@ -97,38 +104,47 @@ Two sections stacked vertically.
 ### Section 1 — Questions
 
 ```
-┌──────────────────────────────────────────────────────┐
-│ Questions                          [+ Nouvelle]      │
-│ ────────────────────────────────────────────────────  │
-│  1. [question text — active language]  [↑] [↓] [✕]  │
-│  2. [question text — active language]  [↑] [↓] [✕]  │
-└──────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────┐
+│ Questions              [Générer]          [+ Nouvelle question] │
+├────┬──────────────────────────────────────────────┬────────────┤
+│ #  │ Question                                     │ Actions    │
+├────┼──────────────────────────────────────────────┼────────────┤
+│ 1  │ [question text — editable in place]          │ [↑][↓][✕] │
+│ 2  │ ...                                          │ [↑][↓][✕] │
+└────┴──────────────────────────────────────────────┴────────────┘
 ```
 
-- Each question shows the active language text
-- Inline edit: click on a question row to edit in place (or open a small edit dialog)
+Widget: `QTableWidget` with 3 columns: `#` (number), `Question` (stretch), `Actions`.
+
+- Text column uses `ResizeMode.Stretch` — resizes proportionally with the window
+- Inline edit: double-click a cell to edit text in place
 - `[↑]` `[↓]`: reorder (updates `display_order`)
 - `[✕]`: delete with confirmation
-- `[+ Nouvelle]`: appends a new empty question
+- `[+ Nouvelle question]`: appends a new empty row
+- `[Générer]`: calls `generate_questions()` via `_GenerateWorker` (QThread) — replaces all rows
 
 ### Section 2 — Manifestations observables
 
 ```
-┌──────────────────────────────────────────────────────┐
-│ Manifestations observables         [+ Nouvel item]   │
-│ ────────────────────────────────────────────────────  │
-│  Catégorie ▾  │  Texte                │  [↑][↓][✕]  │
-│  ✅ OK        │  ...                  │              │
-│  ⚠️ Excessif  │  ...                  │              │
-│  🔼 Dépasse   │  ...                  │              │
-│  ❌ Insuffisant│  ...                 │              │
-└──────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────┐
+│ Manifestations observables  [Générer items]   [+ Nouvel item]  │
+├──────────────────┬───────────────────────────────┬────────────┤
+│ Catégorie        │ Texte                         │ Actions    │
+├──────────────────┼───────────────────────────────┼────────────┤
+│ ✅ Manifeste     │ ...                           │ [↑][↓][✕] │
+│ ⚠️ Excessif      │ ...                           │ [↑][↓][✕] │
+│ 🔼 Dépasse       │ ...                           │ [↑][↓][✕] │
+│ ❌ Insuffisant   │ ...                           │ [↑][↓][✕] │
+└──────────────────┴───────────────────────────────┴────────────┘
 ```
 
-- Items grouped and sorted by `category_code` then `display_order`
+Widget: `QTableWidget` with 3 columns: `Catégorie`, `Texte` (stretch), `Actions`.
+
+- Items sorted by `category_code` display_order then item `display_order`
 - Category selector on `[+ Nouvel item]`: combobox with the 4 categories
 - `category_code` values: `OK` | `EXC` | `DEP` | `INS`
 - Category display labels come from `i18n` (not hardcoded)
+- `[Générer items]`: calls `generate_questions_items()` via `_GenerateItemsWorker` (QThread)
 
 ---
 

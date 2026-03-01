@@ -257,18 +257,18 @@ def generate_fiche(capacity_id: str, lang: str) -> GeneratedFiche
 def generate_fiche_risque(capacity_id: str, lang: str) -> GeneratedRisque
     # Generates risk_insufficient and risk_excessive only.
     # Prompt file: generate_fiche_risque.txt
-    # Used by: cli/populate_db.py section "risque"
+    # Used by: TabFiche [Générer risques] button (UI), cli/populate_db.py section "risque"
 
 def generate_questions(capacity_id: str, lang: str) -> list[str]
     # Generates 10 interview questions. Returns a plain list of strings.
     # Prompt file: generate_questions.txt
-    # Used by: cli/populate_db.py section "questions"
+    # Used by: TabQuestions [Générer] button (UI), cli/populate_db.py section "questions"
 
 def generate_questions_items(capacity_id: str, lang: str) -> dict[str, list[str]]
     # Generates 4×5 observable items (OK/EXC/DEP/INS).
     # Returns: {"OK": [...], "EXC": [...], "DEP": [...], "INS": [...]}
     # Prompt file: generate_questions_items.txt
-    # Used by: cli/populate_db.py section "items"
+    # Used by: TabQuestions [Générer items] button (UI), cli/populate_db.py section "items"
 
 def generate_coaching(capacity_id: str, lang: str) -> GeneratedCoaching
     # Generates coaching fields.
@@ -283,25 +283,28 @@ def translate_fiche(capacity_id: str, source_lang: str, target_lang: str,
 ```
 
 Common behaviour for all generation functions:
-- Reads `params.yml`: `ollama.url`, `ollama.model`, `ollama.timeout`, `system_prompt`
+- Reads `params.yml`: `ollama.url`, `ollama.model`, `ollama.timeout`
+- Reads `services/prompt/system_01.txt` for the system prompt via `_load_system_prompt()`
 - Reads `axioms.yml` for level/axis/pole structure of the capacity
 - Reads `capacities_fr.yml` or `capacities_en.yml` (based on `lang`) for canonical name
 - Name resolution: `capacities_*.yml[capacity_id]` → fallback to `capacity_id`
 - Calls Ollama API via `urllib` (no SDK dependency)
+- Retries up to 3 times on network/format error (`_OLLAMA_MAX_RETRIES=3`, 2s delay)
 - Expects JSON response — strips markdown delimiters (` ```json … ``` `) before parsing
-- Raises `RuntimeError` if Ollama unreachable or response unparseable
+- Raises `RuntimeError` if all retry attempts fail or response unparseable
 
 ### params.yml structure (project root)
 
 ```yaml
 ollama:
   url: "http://localhost:11434"
-  model: "mistral-large-3:675b-cloud"
-  timeout: 10               # HTTP timeout in seconds
-
-system_prompt: |
-  [System instruction for the model — to be defined]
+  model: "mistral-large-3:675b-cloud"    # Generation model
+  model_judge: "kimi-k2-thinking:cloud"  # Evaluation model (ai_judge.py)
+  timeout: 120              # HTTP timeout in seconds
 ```
+
+The system prompt is stored separately in `services/prompt/system_01.txt`
+(English, R6/Halliday expert role). It is read at call time by `_load_system_prompt()`.
 
 ### Canonical name files (r6_navigator/)
 
