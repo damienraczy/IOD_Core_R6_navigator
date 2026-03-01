@@ -268,6 +268,7 @@ def generate_questions(capacity_id: str, lang: str) -> list[str]:
         participant_1=interview_rules["participant_1"],
         process_type=interview_rules["process_type"],
         participant_2=interview_rules["participant_2"],
+        circumstance=interview_rules["circumstance"],
         proscription=interview_rules["proscription"],
     )
 
@@ -648,15 +649,16 @@ def _load_axioms() -> dict:
 def _load_halliday_rules(level_code: str) -> dict:
     """Charge les règles Halliday spécifiques au niveau depuis ``halliday_rules.json``.
 
-    Chaque niveau (I, O, S) dispose de cinq champs décrivant les contraintes
+    Chaque niveau (I, O, S) dispose de sept champs décrivant les contraintes
     de transitivité grammaticale : ``interview_target``, ``participant_1``,
-    ``process_type``, ``participant_2``, ``proscription``.
+    ``process_type``, ``participant_2``, ``circumstance``, ``proscription``,
+    et ``audit_rule_main_clause`` (plus ``audit_rule_inversion`` pour O).
 
     Args:
         level_code: Code du niveau R6 (``"I"``, ``"O"`` ou ``"S"``).
 
     Returns:
-        Dictionnaire des cinq champs Halliday pour le niveau demandé.
+        Dictionnaire des champs Halliday pour le niveau demandé.
 
     Raises:
         FileNotFoundError: Si ``halliday_rules.json`` est absent du dossier prompt.
@@ -674,7 +676,8 @@ def _load_halliday_context(level_code: str) -> str:
     Lit les règles de transitivité depuis ``halliday_rules.json`` et les
     assemble en un bloc texte structuré prêt à être injecté comme
     ``{halliday_context}`` dans n'importe quel prompt de génération ou
-    d'évaluation.
+    d'évaluation. Inclut les règles d'audit syntaxique (``audit_rule_main_clause``
+    et, pour O, ``audit_rule_inversion``) afin de guider également le juge LLM.
 
     Args:
         level_code: Code du niveau R6 (``"I"``, ``"O"`` ou ``"S"``).
@@ -683,13 +686,18 @@ def _load_halliday_context(level_code: str) -> str:
         Bloc texte multi-lignes décrivant les contraintes Halliday du niveau.
     """
     rules = _load_halliday_rules(level_code)
-    return (
-        f"Interview target: {rules['interview_target']}\n"
-        f"Subject / Participant 1: {rules['participant_1']}\n"
-        f"Process type: {rules['process_type']}\n"
-        f"Object / Participant 2: {rules['participant_2']}\n"
-        f"Proscription: {rules['proscription']}"
-    )
+    lines = [
+        f"Interview target: {rules['interview_target']}",
+        f"Subject / Participant 1: {rules['participant_1']}",
+        f"Process type: {rules['process_type']}",
+        f"Object / Participant 2: {rules['participant_2']}",
+        f"Circumstance: {rules['circumstance']}",
+        f"Proscription: {rules['proscription']}",
+        f"Audit rule (main clause): {rules['audit_rule_main_clause']}",
+    ]
+    if "audit_rule_inversion" in rules:
+        lines.append(f"Audit rule (inversion test): {rules['audit_rule_inversion']}")
+    return "\n".join(lines)
 
 
 def _load_canonical_name(capacity_id: str, lang: str) -> str:

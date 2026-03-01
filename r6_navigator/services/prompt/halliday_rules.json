@@ -1,24 +1,31 @@
 {
-  "_comment": "Level-specific parameters for R6 interview question generation. Keys match load_prompt() flat substitution.",
+  "_comment": "Level-specific Halliday transitivity rules for R6 generation and evaluation. Keys match load_prompt() flat substitution. v2: added circumstance, audit_rule_main_clause, audit_rule_inversion; tightened proscriptions.",
   "I": {
     "interview_target": "Conduct interviews with various level staff (operation, management, executive) about concrete situations they have personally experienced and acted upon. Target the interviewee's own direct actions and observable behaviours in specific past episodes. Avoid hypothetical or systemic questions.",
     "participant_1": "Actor (a physical individual, a collaborator, a manager, an executive, the 'you' of the interview — someone with a body capable of performing the verb)",
     "process_type": "Material (e.g. produce, write, repair, build, deliver) or Behavioural (e.g. listen, observe, interact, respond)",
     "participant_2": "Optional Goal (the concrete entity on which the action operates, e.g. a report, a client, a task, a decision)",
-    "proscription": "No systemic abstraction. The subject must have a physical body capable of performing the verb. Never ask about what 'the team' or 'the organisation' does — ask about what the interviewee personally did."
+    "circumstance": "Context of the action (Time, Place, Manner). The physical or immediate setting where the behaviour occurs (e.g. 'in the morning', 'carefully', 'in the meeting room'). It is the concrete level of the organisation's environment.",
+    "proscription": "No systemic abstraction. The subject must have a physical body capable of performing the verb. Never ask about what 'the team' or 'the organisation' does — ask about what the interviewee personally did. Relational processes (be, seem, appear, is proactive) are forbidden: the verb must describe a concrete action or behaviour, not an attribute.",
+    "audit_rule_main_clause": "Syntactic analysis strictly applies to the main grammatical clause. Subordinate clauses may contain processes from other levels. Do not reject complex but valid sentences, and avoid generating artificially simple ones."
   },
   "O": {
     "interview_target": "Conduct interviews with managers and team leaders about coordination mechanisms, collective routines, and the actual functioning of processes and systems. Ask about systemic episodes — how the system responds, what the routine produces, what breaks when the mechanism fails — not about what the interviewee personally did.",
-    "participant_1": "Carrier or Abstract Actor (the system, the organisation, the process, the managerial ritual, the tool, the committee as an institutional instance)",
+    "participant_1": "Carrier or Abstract Actor (the system, the organisation, the process, the managerial ritual, the tool, the committee as an institutional instance). A named group of humans (e.g. 'managers', 'the team') is invalid — only an institutional entity or a systemic mechanism is valid.",
     "process_type": "Relational-attributive (e.g. be structured, become predictable, remain aligned) or Abstract Material (e.g. consolidate, coordinate, generate, regulate, standardise)",
     "participant_2": "Optional Attribute (the characteristic assigned to the carrier) or Abstract Goal (the systemic output)",
-    "proscription": "The subject of the main clause must never be an individual. The action must result from system engineering, not personal initiative. Avoid 'you' as the grammatical subject of the observable item."
+    "circumstance": "Context of the system (Frequency, Condition, Scope). The operational conditions under which the mechanism functions (e.g. 'weekly', 'automatically', 'under standard conditions').",
+    "proscription": "The subject of the main clause must never be an individual, nor a named group of humans (e.g. 'managers coordinate' is invalid — use 'the coordination mechanism generates' instead). The action must result from system engineering, not personal initiative. Avoid 'you' as the grammatical subject of the observable item.",
+    "audit_rule_main_clause": "Syntactic analysis strictly applies to the main grammatical clause. Subordinate clauses may contain processes from other levels. Do not reject complex but valid sentences, and avoid generating artificially simple ones.",
+    "audit_rule_inversion": "Inversion test: if the main participant of a Level O statement can be replaced by a proper noun (e.g. 'John') without making the sentence semantically absurd, the statement likely belongs to Level I and is invalid for Level O."
   },
   "S": {
-    "interview_target": "Conduct interviews with executive leadership about historical strategic decisions, deliberate trade-offs made under uncertainty, and the underlying theories of action that guide the organisation. Explore choices made, positions taken, and the reasoning behind them — not routines performed.",
-    "participant_1": "Senser (the thinking entity: executive leadership, the board, the organisation as a decision-making whole) or Identified (the value proposition, the strategic identity, the ambition)",
+    "interview_target": "Conduct interviews with various level staff (operation, management, executive) about historical strategic decisions, deliberate trade-offs made under uncertainty, and the underlying theories of action that guide the organisation. Explore choices made, positions taken, and the reasoning behind them — not routines performed.",
+    "participant_1": "Senser (the thinking entity: executive leadership, the board, the organisation as a decision-making whole) or Identified (the value proposition, the strategic identity, the ambition). When using relational-identifying processes, the statement must be reversible (A = B): 'X constitutes Y' implies 'Y is constituted by X'.",
     "process_type": "Mental (e.g. decide, prioritise, anticipate, consider, believe) or Relational-identifying (e.g. signify, represent, constitute, define, embody)",
     "participant_2": "Optional Phenomenon (the object of cognition or strategic choice) or Identifier (what defines or anchors the identity)",
-    "proscription": "Avoid obligation verbs (must, should, need to) which mask an inability to define identity. Avoid operational or systemic process verbs. Prefer relational-identifying processes that express who or what the organisation IS, not what it produces."
+    "circumstance": "Context of the decision (Time Horizon, Competitive Landscape, Uncertainty). The macro-environment or strategic timeframe (e.g. 'in the long term', 'vis-à-vis the competition', 'under market pressure'). It is the abstract level of the organisation's environment.",
+    "proscription": "Avoid obligation verbs (must, should, need to) which mask an inability to define identity. Avoid operational or systemic process verbs. Prefer relational-identifying processes that express who or what the organisation IS, not what it produces. Do not reduce the strategic level to executive decision narratives alone — identity statements (A = B) are equally valid and must not be neglected.",
+    "audit_rule_main_clause": "Syntactic analysis strictly applies to the main grammatical clause. Subordinate clauses may contain processes from other levels. Do not reject complex but valid sentences, and avoid generating artificially simple ones."
   }
 }

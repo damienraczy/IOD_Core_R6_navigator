@@ -10,6 +10,7 @@ Interview Target: {interview_target}
 Mandatory Primary Participant (Subject): {participant_1}
 Mandatory Process Type (Verb): {process_type}
 Optional Secondary Participant (Object/Attribute): {participant_2}
+Circumstance (Time, Place, Manner or equivalent for this level): {circumstance}
 Strict Proscription: {proscription}
 
 Generate 10 open-ended interview questions targeting capacity {capacity_id} (axis: {axis_name}, pole: {pole_name}).
