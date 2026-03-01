@@ -1,7 +1,21 @@
-"""Évaluation d'une fiche R6 par 3 juges LLM tournant en parallèle.
+"""Évaluation des contenus R6 par trois juges LLM indépendants en parallèle.
 
-Chaque juge appelle Ollama avec un prompt spécialisé et retourne un verdict
-structuré. Les trois appels sont lancés simultanément via threading.Thread.
+Trois critères sont évalués simultanément pour chaque section (fiche, questions,
+coaching) :
+
+* **Axiomes R6** — respect de l'ontologie (niveaux, axes, pôles, isomorphisme).
+* **Halliday** — transitivité grammaticale et registre linguistique appropriés au
+  niveau (I / O / S).
+* **Cohérence niveau/pôle** — alignement sémantique avec le niveau et le pôle
+  de la capacité évaluée.
+
+Chaque juge appelle Ollama (modèle ``model_judge`` de ``params.yml``) avec un
+prompt spécialisé et retourne un verdict parmi ``pas_bon``, ``satisfaisant``,
+``tres_bon``. Les trois appels sont lancés simultanément via ``threading.Thread``
+pour minimiser la latence totale.
+
+Le verdict agrégé est déterminé par majorité simple ; en cas d'égalité parfaite
+(trois verdicts différents), le pire des trois est retenu par conservatisme.
 """
 
 from __future__ import annotations
@@ -25,7 +39,10 @@ _PROJECT_ROOT = _PACKAGE_DIR.parent  # project root (params.yml)
 # Public data model
 # ---------------------------------------------------------------------------
 
+# Verdicts ordonnés du moins bon au meilleur (utilisés pour la comparaison).
 VERDICTS = ("pas_bon", "satisfaisant", "tres_bon")
+
+# Correspondance verdict → score numérique pour le calcul de la moyenne agrégée.
 SCORES = {
     "pas_bon": 1,
     "satisfaisant": 2,
@@ -35,20 +52,44 @@ SCORES = {
 
 @dataclass
 class SingleJudgeResult:
+    """Résultat d'un juge LLM individuel.
+
+    Attributes:
+        judge_name: Identifiant du juge (``"axioms_r6"``, ``"halliday"``
+            ou ``"coherence"``).
+        verdict: Verdict parmi ``"pas_bon"``, ``"satisfaisant"``,
+            ``"tres_bon"``.
+        score: Valeur numérique correspondant au verdict (1, 2 ou 3).
+        justification: Explication textuelle fournie par le LLM.
+        error: Message d'erreur si l'appel Ollama a échoué, sinon ``None``.
+    """
+
     judge_name: str
-    verdict: str  # "pas_bon" | "satisfaisant" | "tres_bon"
-    score: int  # 1 | 2 | 3
+    verdict: str
+    score: int
     justification: str
     error: str | None = None
 
 
 @dataclass
 class JudgeResults:
-    judge_axioms: SingleJudgeResult  # Juge 1 — axiomes R6
-    judge_halliday: SingleJudgeResult  # Juge 2 — Halliday
-    judge_coherence: SingleJudgeResult  # Juge 3 — cohérence niveau/pôle
-    aggregate_verdict: str  # majorité ou pire des 3
-    aggregate_score: float  # moyenne des 3 scores
+    """Résultats agrégés des trois juges LLM pour une évaluation complète.
+
+    Attributes:
+        judge_axioms: Résultat du juge vérifiant les axiomes R6.
+        judge_halliday: Résultat du juge vérifiant la transitivité Halliday.
+        judge_coherence: Résultat du juge vérifiant la cohérence niveau/pôle.
+        aggregate_verdict: Verdict de majorité (pire des trois si égalité
+            parfaite).
+        aggregate_score: Moyenne arithmétique des trois scores (entre 1.0
+            et 3.0).
+    """
+
+    judge_axioms: SingleJudgeResult
+    judge_halliday: SingleJudgeResult
+    judge_coherence: SingleJudgeResult
+    aggregate_verdict: str
+    aggregate_score: float
 
 
 # ---------------------------------------------------------------------------
@@ -101,7 +142,7 @@ def judge_fiche(content: dict, capacity_id: str, lang: str) -> JudgeResults:
 
     Args:
         content: Dictionnaire des champs de la fiche avec les clés
-            ``label``, ``definition``, ``central_function``, ``observable``,
+            ``label``, ``definition``, ``central_function``,
             ``risk_insufficient``, ``risk_excessive``.
         capacity_id: Identifiant de la capacité (ex. ``"I1a"``).
         lang: Langue active (``"fr"`` ou ``"en"``).
@@ -274,18 +315,45 @@ def _run_judges(
 
 
 def _load_params() -> dict:
+    """Charge et retourne la configuration Ollama depuis ``params.yml``.
+
+    Returns:
+        Dictionnaire YAML avec les clés ``ollama`` (url, model, model_judge,
+        timeout) et ``reserve`` (notes sur les modèles alternatifs).
+
+    Raises:
+        FileNotFoundError: Si ``params.yml`` est absent de la racine projet.
+    """
     params_path = _PROJECT_ROOT / "params.yml"
     with open(params_path, encoding="utf-8") as f:
         return yaml.safe_load(f)
 
 
 def _load_axioms() -> dict:
+    """Charge l'ontologie R6 depuis ``axioms.yml``.
+
+    Returns:
+        Dictionnaire YAML avec la clé ``r6_ontology`` contenant niveaux,
+        axes, pôles et principes fondamentaux du modèle R6.
+
+    Raises:
+        FileNotFoundError: Si ``axioms.yml`` est absent du package.
+    """
     axioms_path = _PACKAGE_DIR / "axioms.yml"
     with open(axioms_path, encoding="utf-8") as f:
         return yaml.safe_load(f)
 
 
 def _load_halliday_spec() -> str:
+    """Charge la spécification Halliday depuis ``R6/Halliday.md``.
+
+    Ce fichier décrit les règles de transitivité grammaticale appliquées
+    différemment selon le niveau R6 (I, O, S). Son absence ne bloque pas
+    l'évaluation.
+
+    Returns:
+        Contenu brut du fichier Markdown, ou chaîne vide si absent.
+    """
     spec_path = _PROJECT_ROOT / "R6" / "Halliday.md"
     try:
         with open(spec_path, encoding="utf-8") as f:
@@ -356,6 +424,25 @@ def _halliday_context_for_level(spec: str, level_code: str) -> str:
 
 
 def _call_ollama(url: str, model: str, system: str, prompt: str, timeout: int) -> str:
+    """Appelle l'API Ollama en mode génération non streamée et retourne la réponse brute.
+
+    Contrairement à la version dans ``ai_generate``, cette implémentation n'effectue
+    pas de nouvelle tentative : les trois juges tournant en parallèle, une défaillance
+    est capturée localement par ``run_judge`` et propagée dans ``SingleJudgeResult.error``.
+
+    Args:
+        url: URL de base du serveur Ollama (ex. ``"http://localhost:11434"``).
+        model: Nom du modèle juge à utiliser (ex. ``"kimi-k2-thinking:cloud"``).
+        system: Prompt système décrivant le rôle et les règles du LLM.
+        prompt: Prompt utilisateur contenant le contenu à évaluer.
+        timeout: Délai maximum en secondes avant abandon de la requête HTTP.
+
+    Returns:
+        Chaîne brute retournée par Ollama dans le champ ``response``.
+
+    Raises:
+        RuntimeError: Si Ollama est inaccessible ou la réponse est malformée.
+    """
     import urllib.error
     import urllib.request
 
@@ -385,7 +472,19 @@ def _call_ollama(url: str, model: str, system: str, prompt: str, timeout: int) -
 
 
 def _fix_json_strings(text: str) -> str:
-    """Escapes literal newlines and tabs inside JSON string values."""
+    """Échappe les sauts de ligne et tabulations littéraux dans les valeurs JSON.
+
+    Même logique que dans ``ai_generate._fix_json_strings`` : parcours
+    caractère par caractère pour repérer les séquences nues à l'intérieur
+    des chaînes JSON et les remplacer par leurs équivalents échappés.
+
+    Args:
+        text: Texte JSON brut potentiellement invalide.
+
+    Returns:
+        Texte JSON dont les valeurs chaînes contiennent des séquences
+        d'échappement valides.
+    """
     result: list[str] = []
     in_string = False
     escape_next = False
@@ -411,6 +510,14 @@ def _fix_json_strings(text: str) -> str:
 
 
 def _strip_markdown_json(text: str) -> str:
+    """Supprime l'enveloppe Markdown ``` optionnelle et corrige les newlines nus.
+
+    Args:
+        text: Réponse brute du LLM, avec ou sans bloc ```json…```.
+
+    Returns:
+        Texte JSON nettoyé prêt pour ``json.loads()``.
+    """
     import re
 
     text = text.strip()
@@ -421,6 +528,22 @@ def _strip_markdown_json(text: str) -> str:
 
 
 def _parse_judge_response(raw: str, judge_name: str) -> SingleJudgeResult:
+    """Parse la réponse JSON d'un juge LLM en ``SingleJudgeResult``.
+
+    Applique des règles de tolérance : verdict inconnu → ``"satisfaisant"``,
+    score non numérique → score correspondant au verdict, score hors [1, 3] →
+    borné. Cela évite qu'un modèle mal cadré ne fasse planter l'agrégation.
+
+    Args:
+        raw: Chaîne JSON brute retournée par Ollama pour ce juge.
+        judge_name: Identifiant du juge (utilisé pour le message d'erreur).
+
+    Returns:
+        ``SingleJudgeResult`` avec verdict, score et justification extraits.
+
+    Raises:
+        RuntimeError: Si la réponse n'est pas du JSON valide.
+    """
     clean = _strip_markdown_json(raw)
     try:
         data = json.loads(clean)

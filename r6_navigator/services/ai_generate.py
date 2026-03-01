@@ -1,3 +1,24 @@
+"""Génération de contenus R6 via Ollama (LLM local).
+
+Ce module expose les fonctions publiques de génération et de traduction
+pour chacune des cinq sections d'une capacité :
+
+* ``generate_fiche``           — intitulé, définition, fonction centrale
+* ``generate_fiche_risque``    — risques si insuffisant / si excessif
+* ``generate_questions``       — 10 questions d'entretien STAR
+* ``generate_questions_items`` — 4×5 manifestations observables (OK/DEP/EXC/INS)
+* ``generate_coaching``        — thèmes, leviers, missions de coaching
+* ``translate_fiche``          — traduction complète de la fiche
+* ``translate_questions``      — traduction des questions
+* ``translate_observable_items`` — traduction des items observables
+* ``translate_coaching``       — traduction du coaching
+
+Tous les appels Ollama passent par ``_call_ollama``, qui réessaie jusqu'à
+``_OLLAMA_MAX_RETRIES`` fois en cas d'erreur réseau ou de réponse malformée.
+Le prompt système est chargé depuis ``services/prompt/system_01.txt``.
+La configuration Ollama (URL, modèle, timeout) provient de ``params.yml``.
+"""
+
 from __future__ import annotations
 
 import json
@@ -23,31 +44,65 @@ _PROJECT_ROOT = _PACKAGE_DIR.parent  # project root (params.yml lives here)
 
 @dataclass
 class GeneratedFiche:
-    name: str
-    definition: str  # Bullet string: "- phrase.\n" × 5
-    central_function: str  # 3 prose sentences
+    """Résultat de ``generate_fiche()`` — trois champs de la fiche descriptive.
 
-
-@dataclass
-class GeneratedRisque:
-    risk_insufficient: str  # Bullet string (max 5 items)
-    risk_excessive: str  # Bullet string (max 5 items)
-
-
-@dataclass
-class GeneratedContent:
-    """Résultat de translate_fiche() — traduction complète sans observable."""
+    Attributes:
+        name: Intitulé canonique de la capacité dans la langue cible.
+        definition: Bloc de 5 items « - phrase.\n » décrivant la capacité.
+        central_function: Prose de 3 phrases exposant la fonction centrale.
+    """
 
     name: str
     definition: str
     central_function: str
-    risk_insufficient: str  # Bullet string (max 5 items)
-    risk_excessive: str  # Bullet string (max 5 items)
+
+
+@dataclass
+class GeneratedRisque:
+    """Résultat de ``generate_fiche_risque()`` — deux blocs de risques.
+
+    Attributes:
+        risk_insufficient: Bloc « - phrase.\n » (max 5) décrivant les
+            conséquences d'un niveau insuffisant de la capacité.
+        risk_excessive: Bloc « - phrase.\n » (max 5) décrivant les
+            conséquences d'un niveau excessif de la capacité.
+    """
+
+    risk_insufficient: str
+    risk_excessive: str
+
+
+@dataclass
+class GeneratedContent:
+    """Résultat de ``translate_fiche()`` — traduction complète de la fiche.
+
+    Attributes:
+        name: Intitulé traduit dans la langue cible.
+        definition: Bloc de définition traduit (max 5 items « - phrase.\n »).
+        central_function: Fonction centrale traduite (prose 3 phrases).
+        risk_insufficient: Risques si insuffisant traduits (max 5 items).
+        risk_excessive: Risques si excessif traduits (max 5 items).
+    """
+
+    name: str
+    definition: str
+    central_function: str
+    risk_insufficient: str
+    risk_excessive: str
 
 
 @dataclass
 class GeneratedCoaching:
-    reflection_themes: str  # liste à puces "- phrase.\n"
+    """Résultat de ``generate_coaching()`` — trois sections de coaching.
+
+    Attributes:
+        reflection_themes: Thèmes de réflexion en liste à puces
+            (format « - phrase.\n »).
+        intervention_levers: Leviers d'intervention en liste à puces.
+        recommended_missions: Missions recommandées en liste à puces.
+    """
+
+    reflection_themes: str
     intervention_levers: str
     recommended_missions: str
 
@@ -543,18 +598,48 @@ def translate_coaching(
 
 
 def _load_params() -> dict:
+    """Charge et retourne la configuration depuis ``params.yml``.
+
+    Returns:
+        Dictionnaire YAML avec les clés ``ollama`` (url, model, timeout)
+        et ``reserve`` (notes sur les modèles alternatifs).
+
+    Raises:
+        FileNotFoundError: Si ``params.yml`` est absent de la racine projet.
+    """
     params_path = _PROJECT_ROOT / "params.yml"
     with open(params_path, encoding="utf-8") as f:
         return yaml.safe_load(f)
 
 
 def _load_system_prompt() -> str:
+    """Charge le prompt système depuis ``services/prompt/system_01.txt``.
+
+    Le prompt système définit le rôle d'expert R6/Halliday du LLM et les
+    règles de différenciation linguistique obligatoires. Il est envoyé en
+    paramètre ``system`` à chaque appel Ollama.
+
+    Returns:
+        Contenu brut du fichier (chaîne UTF-8).
+
+    Raises:
+        FileNotFoundError: Si ``system_01.txt`` est absent du dossier prompt.
+    """
     path = Path(__file__).parent / "prompt" / "system_01.txt"
     with open(path, encoding="utf-8") as f:
         return f.read()
 
 
 def _load_axioms() -> dict:
+    """Charge l'ontologie R6 depuis ``axioms.yml``.
+
+    Returns:
+        Dictionnaire YAML avec la clé ``r6_ontology`` contenant les niveaux,
+        axes, pôles et principes fondamentaux du modèle R6.
+
+    Raises:
+        FileNotFoundError: Si ``axioms.yml`` est absent du package.
+    """
     axioms_path = _PACKAGE_DIR / "axioms.yml"
     with open(axioms_path, encoding="utf-8") as f:
         return yaml.safe_load(f)
@@ -569,6 +654,15 @@ def _load_interview_rules(level_code: str) -> dict:
 
 
 def _load_halliday_spec() -> str:
+    """Charge la spécification Halliday depuis ``R6/Halliday.md``.
+
+    Ce fichier décrit les règles de transitivité grammaticale (Halliday)
+    appliquées différemment selon le niveau R6 (I, O, S). Il est optionnel :
+    son absence ne bloque pas la génération.
+
+    Returns:
+        Contenu brut du fichier Markdown, ou chaîne vide si absent.
+    """
     spec_path = _PROJECT_ROOT / "R6" / "Halliday.md"
     try:
         with open(spec_path, encoding="utf-8") as f:
@@ -626,6 +720,19 @@ def _halliday_context_for_level(spec: str, level_code: str) -> str:
 
 
 def _load_canonical_name(capacity_id: str, lang: str) -> str:
+    """Retourne le nom canonique d'une capacité dans la langue indiquée.
+
+    Lit ``capacities_fr.yml`` ou ``capacities_en.yml`` selon ``lang``.
+    Si le fichier ou la clé est absent, retourne ``capacity_id`` en fallback
+    pour ne jamais bloquer la génération.
+
+    Args:
+        capacity_id: Identifiant de la capacité (ex. ``"I1a"``).
+        lang: Langue cible (``"fr"`` ou ``"en"``).
+
+    Returns:
+        Nom canonique localisé, ou ``capacity_id`` si introuvable.
+    """
     names_path = _PACKAGE_DIR / f"capacities_{lang}.yml"
     try:
         with open(names_path, encoding="utf-8") as f:
@@ -641,11 +748,25 @@ _OLLAMA_RETRY_DELAY = 2  # seconds between attempts
 
 
 def _call_ollama(url: str, model: str, system: str, prompt: str, timeout: int) -> str:
-    """Calls the Ollama API and returns the raw response string.
+    """Appelle l'API Ollama en mode génération non streamée et retourne la réponse brute.
 
-    Retries up to _OLLAMA_MAX_RETRIES times on any error, waiting
-    _OLLAMA_RETRY_DELAY seconds between attempts. Raises RuntimeError
-    if all attempts fail.
+    Réessaie jusqu'à ``_OLLAMA_MAX_RETRIES`` fois en cas d'erreur réseau ou
+    de réponse JSON malformée, avec une pause de ``_OLLAMA_RETRY_DELAY``
+    secondes entre chaque tentative.
+
+    Args:
+        url: URL de base du serveur Ollama (ex. ``"http://localhost:11434"``).
+        model: Nom du modèle Ollama à utiliser (ex. ``"mistral-large-3:675b-cloud"``).
+        system: Prompt système décrivant le rôle et les règles du LLM.
+        prompt: Prompt utilisateur contenant la tâche de génération.
+        timeout: Délai maximum en secondes avant abandon de la requête HTTP.
+
+    Returns:
+        Chaîne brute retournée par Ollama dans le champ ``response``.
+
+    Raises:
+        RuntimeError: Si toutes les tentatives échouent (réseau inaccessible
+            ou réponse non conforme).
     """
     payload = json.dumps(
         {
@@ -682,12 +803,21 @@ def _call_ollama(url: str, model: str, system: str, prompt: str, timeout: int) -
 
 
 def _fix_json_strings(text: str) -> str:
-    """Escapes literal newlines and tabs inside JSON string values.
+    """Échappe les sauts de ligne et tabulations littéraux dans les valeurs JSON.
 
-    LLMs sometimes emit raw line-breaks inside string literals, which is
-    invalid JSON. This function walks the text character by character and
-    replaces bare ``\\n`` / ``\\r`` / ``\\t`` characters found inside a JSON
-    string (between unescaped double-quotes) with their escaped equivalents.
+    Les LLM émettent parfois des retours à la ligne bruts à l'intérieur de
+    chaînes JSON, ce qui rend le JSON invalide. Cette fonction parcourt le texte
+    caractère par caractère et remplace les ``\\n`` / ``\\r`` / ``\\t`` nus
+    trouvés à l'intérieur d'une chaîne (entre guillemets non échappés) par
+    leurs équivalents échappés ``\\\\n`` / ``\\\\t``. Les ``\\r`` sont
+    silencieusement supprimés.
+
+    Args:
+        text: Texte JSON brut potentiellement invalide.
+
+    Returns:
+        Texte JSON dont les valeurs chaînes contiennent des séquences
+        d'échappement valides.
     """
     result: list[str] = []
     in_string = False
@@ -714,7 +844,18 @@ def _fix_json_strings(text: str) -> str:
 
 
 def _strip_markdown_json(text: str) -> str:
-    """Removes optional ```json ... ``` wrapper and fixes bare newlines in strings."""
+    """Supprime l'enveloppe Markdown ``` optionnelle et corrige les newlines nus.
+
+    Certains modèles encapsulent leur réponse JSON dans un bloc ```json…```.
+    Cette fonction extrait le contenu brut si ce bloc est présent, puis
+    délègue à ``_fix_json_strings`` pour normaliser les caractères de contrôle.
+
+    Args:
+        text: Réponse brute du LLM, avec ou sans bloc ```json…```.
+
+    Returns:
+        Texte JSON nettoyé prêt pour ``json.loads()``.
+    """
     text = text.strip()
     match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", text)
     if match:
@@ -723,9 +864,19 @@ def _strip_markdown_json(text: str) -> str:
 
 
 def _cap_bullets(value, max_items: int = 5) -> str:
-    """Keeps at most max_items bullet lines.
+    """Normalise et tronque une valeur LLM en bloc de puces « - phrase.\n ».
 
-    Accepts either a plain string or a list (some models return arrays).
+    Accepte aussi bien une chaîne multiligne qu'une liste Python, car certains
+    modèles retournent les items sous forme de tableau JSON plutôt que de texte.
+    Seules les lignes commençant par « - » sont conservées (filtre de sécurité).
+
+    Args:
+        value: Valeur brute issue du JSON LLM — chaîne ou liste de chaînes.
+        max_items: Nombre maximum d'items retenus (défaut : 5).
+
+    Returns:
+        Chaîne avec au plus ``max_items`` lignes « - phrase. », terminée par
+        un saut de ligne, ou chaîne vide si ``value`` est falsy.
     """
     if not value:
         return ""
@@ -746,7 +897,19 @@ def _cap_bullets(value, max_items: int = 5) -> str:
 
 
 def _to_str(value, fallback: str = "") -> str:
-    """Coerce any model-returned value to a plain string."""
+    """Convertit toute valeur LLM en chaîne de caractères simple.
+
+    Certains modèles retournent des listes là où une prose est attendue.
+    Cette fonction unifie les cas : None → fallback, list → lignes jointes,
+    autre → str().
+
+    Args:
+        value: Valeur brute issue du JSON LLM (None, str, list, ou autre).
+        fallback: Valeur retournée si ``value`` est None (défaut : ``""``).
+
+    Returns:
+        Représentation textuelle de ``value``.
+    """
     if value is None:
         return fallback
     if isinstance(value, list):
