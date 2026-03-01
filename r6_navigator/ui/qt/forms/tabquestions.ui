@@ -103,6 +103,12 @@
       </spacer>
      </item>
      <item>
+      <widget class="QPushButton" name="btn_generer_items">
+       <property name="text"><string>Générer items</string></property>
+       <property name="toolTip"><string>Générer les manifestations observables via IA</string></property>
+      </widget>
+     </item>
+     <item>
       <widget class="QPushButton" name="btn_new_item">
        <property name="text"><string>+ Nouvel item</string></property>
       </widget>

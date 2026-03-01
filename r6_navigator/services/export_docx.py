@@ -55,7 +55,6 @@ _LABELS: dict[str, dict[str, str]] = {
         "pole": "Pôle",
         "definition": "Définition",
         "central_function": "Fonction centrale",
-        "observable": "Observable",
         "observable_items": "Manifestations observables",
         "risk_insufficient": "Risque si insuffisant",
         "risk_excessive": "Risque si excessif",
@@ -70,7 +69,6 @@ _LABELS: dict[str, dict[str, str]] = {
         "pole": "Pole",
         "definition": "Definition",
         "central_function": "Central function",
-        "observable": "Observable",
         "observable_items": "Observable manifestations",
         "risk_insufficient": "Risk if insufficient",
         "risk_excessive": "Risk if excessive",
@@ -267,11 +265,6 @@ def _add_capacity_to_doc(
         if (trans.central_function or "").strip():
             doc.add_heading(labels["central_function"], level=2)
             doc.add_paragraph(trans.central_function)
-
-        # Observable libre de la Fiche (liste à puces, distinct des ObservableItems).
-        if (trans.observable or "").strip():
-            doc.add_heading(labels["observable"], level=2)
-            _add_bullet_text(doc, trans.observable)
 
         # Risques (listes à puces).
         for field_name, label_key in [

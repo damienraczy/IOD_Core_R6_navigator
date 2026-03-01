@@ -146,21 +146,24 @@ class Ui_TabFiche(object):
 
         self.fields_layout.addWidget(self.text_central_function)
 
-        self.lbl_observable_key = QLabel(self.scroll_contents)
-        self.lbl_observable_key.setObjectName(u"lbl_observable_key")
-
-        self.fields_layout.addWidget(self.lbl_observable_key)
-
-        self.text_observable = QPlainTextEdit(self.scroll_contents)
-        self.text_observable.setObjectName(u"text_observable")
-        self.text_observable.setMinimumSize(QSize(0, 80))
-
-        self.fields_layout.addWidget(self.text_observable)
-
+        self.risk_header_row = QHBoxLayout()
+        self.risk_header_row.setObjectName(u"risk_header_row")
         self.lbl_risk_insufficient_key = QLabel(self.scroll_contents)
         self.lbl_risk_insufficient_key.setObjectName(u"lbl_risk_insufficient_key")
 
-        self.fields_layout.addWidget(self.lbl_risk_insufficient_key)
+        self.risk_header_row.addWidget(self.lbl_risk_insufficient_key)
+
+        self.spacerItem = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+
+        self.risk_header_row.addItem(self.spacerItem)
+
+        self.btn_generer_risque = QPushButton(self.scroll_contents)
+        self.btn_generer_risque.setObjectName(u"btn_generer_risque")
+
+        self.risk_header_row.addWidget(self.btn_generer_risque)
+
+
+        self.fields_layout.addLayout(self.risk_header_row)
 
         self.text_risk_insufficient = QPlainTextEdit(self.scroll_contents)
         self.text_risk_insufficient.setObjectName(u"text_risk_insufficient")
@@ -213,8 +216,11 @@ class Ui_TabFiche(object):
         self.btn_generer.setText(QCoreApplication.translate("TabFiche", u"G\u00e9n\u00e9rer", None))
         self.lbl_definition_key.setText(QCoreApplication.translate("TabFiche", u"D\u00e9finition", None))
         self.lbl_central_function_key.setText(QCoreApplication.translate("TabFiche", u"Fonction centrale", None))
-        self.lbl_observable_key.setText(QCoreApplication.translate("TabFiche", u"Observable", None))
         self.lbl_risk_insufficient_key.setText(QCoreApplication.translate("TabFiche", u"Risque si insuffisant", None))
+#if QT_CONFIG(tooltip)
+        self.btn_generer_risque.setToolTip(QCoreApplication.translate("TabFiche", u"G\u00e9n\u00e9rer les risques via IA", None))
+#endif // QT_CONFIG(tooltip)
+        self.btn_generer_risque.setText(QCoreApplication.translate("TabFiche", u"G\u00e9n\u00e9rer risques", None))
         self.lbl_risk_excessive_key.setText(QCoreApplication.translate("TabFiche", u"Risque si excessif", None))
         pass
     # retranslateUi

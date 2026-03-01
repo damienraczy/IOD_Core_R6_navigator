@@ -1,9 +1,9 @@
 """Onglet Fiche de R6 Navigator.
 
 Affiche et édite les champs structurés d'une capacité (intitulé, définition,
-fonction centrale, observable, risques) et orchestre la génération IA via
-un QThread dédié (_GenerateWorker), ainsi que l'évaluation par 3 juges LLM
-via _JudgeWorker.
+fonction centrale, risques) et orchestre la génération IA via des QThread
+dédiés (_GenerateWorker pour la fiche, _GenerateRisqueWorker pour les risques),
+ainsi que l'évaluation par 3 juges LLM via _JudgeWorker.
 """
 
 from __future__ import annotations
@@ -30,7 +30,7 @@ class _GenerateWorker(QThread):
         error: Émis avec le message d'erreur en cas d'échec.
     """
 
-    finished = Signal(object)   # GeneratedContent
+    finished = Signal(object)   # GeneratedFiche
     error = Signal(str)
 
     def __init__(self, capacity_id: str, lang: str) -> None:
@@ -57,6 +57,43 @@ class _GenerateWorker(QThread):
         except Exception as exc:
             self.error.emit(str(exc))
 
+
+
+# ────────────────────────────────────────────────────────────
+# Worker de génération des risques (thread de fond)
+# ────────────────────────────────────────────────────────────
+
+
+class _GenerateRisqueWorker(QThread):
+    """Thread de fond pour générer risk_insufficient et risk_excessive via Ollama.
+
+    Signals:
+        finished: Émis avec le GeneratedRisque en cas de succès.
+        error: Émis avec le message d'erreur en cas d'échec.
+    """
+
+    finished = Signal(object)   # GeneratedRisque
+    error = Signal(str)
+
+    def __init__(self, capacity_id: str, lang: str) -> None:
+        """Initialise le worker avec les paramètres de la requête.
+
+        Args:
+            capacity_id: Identifiant de la capacité à générer (ex. ``"S1a"``).
+            lang: Code langue de génération (``"fr"`` ou ``"en"``).
+        """
+        super().__init__()
+        self._capacity_id = capacity_id
+        self._lang = lang
+
+    def run(self) -> None:
+        """Exécute l'appel Ollama dans le thread de fond."""
+        try:
+            from r6_navigator.services.ai_generate import generate_fiche_risque
+            content = generate_fiche_risque(self._capacity_id, self._lang)
+            self.finished.emit(content)
+        except Exception as exc:
+            self.error.emit(str(exc))
 
 
 # ────────────────────────────────────────────────────────────
@@ -117,6 +154,7 @@ class TabFiche(QWidget, Ui_TabFiche):
         self._editing = False
         self._dirty = False
         self._worker: _GenerateWorker | None = None
+        self._risque_worker: _GenerateRisqueWorker | None = None
 
         # Juge LLM
         self._original_snapshot: dict | None = None
@@ -191,7 +229,6 @@ class TabFiche(QWidget, Ui_TabFiche):
                 label=self.entry_label.text().strip(),
                 definition=self.text_definition.toPlainText(),
                 central_function=self.text_central_function.toPlainText(),
-                observable=self.text_observable.toPlainText(),
                 risk_insufficient=self.text_risk_insufficient.toPlainText(),
                 risk_excessive=self.text_risk_excessive.toPlainText(),
             )
@@ -224,14 +261,14 @@ class TabFiche(QWidget, Ui_TabFiche):
     # ────────────────────────────────────────────────────────
 
     def _setup_connections(self) -> None:
-        """Connecte les boutons Générer/Juger et les signaux de modification des champs."""
+        """Connecte les boutons Générer/Générer risques/Juger et les signaux de modification des champs."""
         self.btn_generer.clicked.connect(self._on_generate)
+        self.btn_generer_risque.clicked.connect(self._on_generate_risque)
         self.btn_juger.clicked.connect(self._on_juger_clicked)
         self.entry_label.textChanged.connect(self._on_field_changed)
         for widget in (
             self.text_definition,
             self.text_central_function,
-            self.text_observable,
             self.text_risk_insufficient,
             self.text_risk_excessive,
         ):
@@ -246,10 +283,10 @@ class TabFiche(QWidget, Ui_TabFiche):
         self.lbl_label_key.setText(t("fiche.label"))
         self.lbl_definition_key.setText(t("fiche.definition"))
         self.lbl_central_function_key.setText(t("fiche.central_function"))
-        self.lbl_observable_key.setText(t("fiche.observable"))
         self.lbl_risk_insufficient_key.setText(t("fiche.risk_insufficient"))
         self.lbl_risk_excessive_key.setText(t("fiche.risk_excessive"))
         self.btn_generer.setText(t("btn.generate"))
+        self.btn_generer_risque.setText(t("btn.generate_risque"))
         self.btn_juger.setText(t("btn.judge"))
 
     def _load_capacity_data(self) -> None:
@@ -282,7 +319,6 @@ class TabFiche(QWidget, Ui_TabFiche):
         self.entry_label.setText(trans.label if trans else "")
         self.text_definition.setPlainText(trans.definition or "" if trans else "")
         self.text_central_function.setPlainText(trans.central_function or "" if trans else "")
-        self.text_observable.setPlainText(trans.observable or "" if trans else "")
         self.text_risk_insufficient.setPlainText(trans.risk_insufficient or "" if trans else "")
         self.text_risk_excessive.setPlainText(trans.risk_excessive or "" if trans else "")
 
@@ -299,7 +335,6 @@ class TabFiche(QWidget, Ui_TabFiche):
         for w in (
             self.text_definition,
             self.text_central_function,
-            self.text_observable,
             self.text_risk_insufficient,
             self.text_risk_excessive,
         ):
@@ -309,13 +344,12 @@ class TabFiche(QWidget, Ui_TabFiche):
         """Retourne un tuple de tous les widgets de saisie éditables.
 
         Returns:
-            Tuple contenant entry_label et les cinq QPlainTextEdit.
+            Tuple contenant entry_label et les quatre QPlainTextEdit.
         """
         return (
             self.entry_label,
             self.text_definition,
             self.text_central_function,
-            self.text_observable,
             self.text_risk_insufficient,
             self.text_risk_excessive,
         )
@@ -352,7 +386,7 @@ class TabFiche(QWidget, Ui_TabFiche):
         dirty_changed qu'une seule fois à la fin.
 
         Args:
-            content: Objet GeneratedContent retourné par generate_fiche().
+            content: Objet GeneratedFiche retourné par generate_fiche().
         """
         self.btn_generer.setEnabled(True)
         # Active le mode édition avant d'écrire pour que les champs soient modifiables.
@@ -363,9 +397,6 @@ class TabFiche(QWidget, Ui_TabFiche):
         self.entry_label.setText(content.name)
         self.text_definition.setPlainText(content.definition)
         self.text_central_function.setPlainText(content.central_function)
-        self.text_observable.setPlainText(content.observable)
-        self.text_risk_insufficient.setPlainText(content.risk_insufficient)
-        self.text_risk_excessive.setPlainText(content.risk_excessive)
         for w in self._all_editable():
             w.blockSignals(False)
         self._worker = None
@@ -384,6 +415,56 @@ class TabFiche(QWidget, Ui_TabFiche):
         self._worker = None
 
     # ────────────────────────────────────────────────────────
+    # Génération IA — Risques
+    # ────────────────────────────────────────────────────────
+
+    def _on_generate_risque(self) -> None:
+        """Lance la génération des risques via IA dans un thread de fond."""
+        if self._current_capacity is None:
+            return
+        if self._risque_worker is not None and self._risque_worker.isRunning():
+            return
+        self.btn_generer_risque.setEnabled(False)
+        self._risque_worker = _GenerateRisqueWorker(
+            self._current_capacity.capacity_id, current_lang()
+        )
+        self._risque_worker.finished.connect(self._on_generate_risque_done)
+        self._risque_worker.error.connect(self._on_generate_risque_error)
+        self._risque_worker.start()
+
+    def _on_generate_risque_done(self, content) -> None:
+        """Peuple les champs Risque avec le contenu généré.
+
+        Active le mode édition si nécessaire, puis écrit dans les deux champs
+        risk_insufficient et risk_excessive sans déclencher dirty_changed plusieurs fois.
+
+        Args:
+            content: Objet GeneratedRisque retourné par generate_fiche_risque().
+        """
+        self.btn_generer_risque.setEnabled(True)
+        if not self._editing:
+            self.set_edit_mode(True)
+        for w in self._all_editable():
+            w.blockSignals(True)
+        self.text_risk_insufficient.setPlainText(content.risk_insufficient)
+        self.text_risk_excessive.setPlainText(content.risk_excessive)
+        for w in self._all_editable():
+            w.blockSignals(False)
+        self._risque_worker = None
+        self._dirty = True
+        self.dirty_changed.emit(True)
+
+    def _on_generate_risque_error(self, message: str) -> None:
+        """Affiche une erreur et réactive le bouton Générer risques.
+
+        Args:
+            message: Description de l'erreur retournée par le worker.
+        """
+        self.btn_generer_risque.setEnabled(True)
+        QMessageBox.warning(self, t("error.generate"), message)
+        self._risque_worker = None
+
+    # ────────────────────────────────────────────────────────
     # Évaluation par 3 juges LLM
     # ────────────────────────────────────────────────────────
 
@@ -392,7 +473,7 @@ class TabFiche(QWidget, Ui_TabFiche):
 
         Returns:
             Dictionnaire avec les clés ``capacity_id``, ``label``, ``definition``,
-            ``central_function``, ``observable``, ``risk_insufficient``, ``risk_excessive``.
+            ``central_function``, ``risk_insufficient``, ``risk_excessive``.
         """
         capacity_id = (
             self._current_capacity.capacity_id if self._current_capacity else ""
@@ -402,7 +483,6 @@ class TabFiche(QWidget, Ui_TabFiche):
             "label": self.entry_label.text().strip(),
             "definition": self.text_definition.toPlainText(),
             "central_function": self.text_central_function.toPlainText(),
-            "observable": self.text_observable.toPlainText(),
             "risk_insufficient": self.text_risk_insufficient.toPlainText(),
             "risk_excessive": self.text_risk_excessive.toPlainText(),
         }
@@ -472,7 +552,6 @@ class TabFiche(QWidget, Ui_TabFiche):
         self.entry_label.setText(content.get("label", ""))
         self.text_definition.setPlainText(content.get("definition", ""))
         self.text_central_function.setPlainText(content.get("central_function", ""))
-        self.text_observable.setPlainText(content.get("observable", ""))
         self.text_risk_insufficient.setPlainText(content.get("risk_insufficient", ""))
         self.text_risk_excessive.setPlainText(content.get("risk_excessive", ""))
         for w in self._all_editable():

@@ -211,28 +211,38 @@
           </widget>
          </item>
          <item>
-          <widget class="QLabel" name="lbl_observable_key">
-           <property name="text">
-            <string>Observable</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QPlainTextEdit" name="text_observable">
-           <property name="minimumSize">
-            <size>
-             <width>0</width>
-             <height>80</height>
-            </size>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QLabel" name="lbl_risk_insufficient_key">
-           <property name="text">
-            <string>Risque si insuffisant</string>
-           </property>
-          </widget>
+          <layout class="QHBoxLayout" name="risk_header_row">
+           <item>
+            <widget class="QLabel" name="lbl_risk_insufficient_key">
+             <property name="text">
+              <string>Risque si insuffisant</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <spacer>
+             <property name="orientation">
+              <enum>Qt::Orientation::Horizontal</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>40</width>
+               <height>20</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
+           <item>
+            <widget class="QPushButton" name="btn_generer_risque">
+             <property name="toolTip">
+              <string>Générer les risques via IA</string>
+             </property>
+             <property name="text">
+              <string>Générer risques</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
          </item>
          <item>
           <widget class="QPlainTextEdit" name="text_risk_insufficient">

@@ -122,7 +122,6 @@ class CapacityTranslation(Base):
     label: Mapped[str] = mapped_column(Text, nullable=False, default="")
     definition: Mapped[str | None] = mapped_column(Text)
     central_function: Mapped[str | None] = mapped_column(Text)
-    observable: Mapped[str | None] = mapped_column(Text)
     risk_insufficient: Mapped[str | None] = mapped_column(Text)
     risk_excessive: Mapped[str | None] = mapped_column(Text)
 

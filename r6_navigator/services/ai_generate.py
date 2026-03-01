@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+import time
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
@@ -21,19 +22,27 @@ _PROJECT_ROOT = _PACKAGE_DIR.parent  # project root (params.yml lives here)
 
 
 @dataclass
-class GeneratedContent:
+class GeneratedFiche:
     name: str
-    definition: str
-    central_function: str
-    observable: str  # Bullet string: "- phrase.\n- phrase.\n" (max 5 items)
+    definition: str  # Bullet string: "- phrase.\n" × 5
+    central_function: str  # 3 prose sentences
+
+
+@dataclass
+class GeneratedRisque:
     risk_insufficient: str  # Bullet string (max 5 items)
     risk_excessive: str  # Bullet string (max 5 items)
 
 
 @dataclass
-class GeneratedQuestions:
-    questions: list[str]  # textes des questions STAR
-    observable_items: dict[str, list[str]]  # {code_catégorie: [texte, ...]}
+class GeneratedContent:
+    """Résultat de translate_fiche() — traduction complète sans observable."""
+
+    name: str
+    definition: str
+    central_function: str
+    risk_insufficient: str  # Bullet string (max 5 items)
+    risk_excessive: str  # Bullet string (max 5 items)
 
 
 @dataclass
@@ -48,15 +57,15 @@ class GeneratedCoaching:
 # ---------------------------------------------------------------------------
 
 
-def generate_fiche(capacity_id: str, lang: str) -> GeneratedContent:
-    """Calls Ollama to generate professional R6 content for one capacity.
+def generate_fiche(capacity_id: str, lang: str) -> GeneratedFiche:
+    """Calls Ollama to generate name, definition and central_function for one capacity.
 
     Args:
         capacity_id: e.g. "I1a"
         lang: active UI language ("fr" or "en"); model responds in this language.
 
     Returns:
-        GeneratedContent populated from the JSON response.
+        GeneratedFiche populated from the JSON response.
 
     Raises:
         RuntimeError: if Ollama is unreachable or the response is not valid JSON.
@@ -98,18 +107,128 @@ def generate_fiche(capacity_id: str, lang: str) -> GeneratedContent:
     )
 
     raw = _call_ollama(url, model, system_prompt, user_prompt, timeout)
-    return _parse_response(raw, capacity_id)
+    return _parse_fiche_response(raw, capacity_id)
 
 
-def generate_questions(capacity_id: str, lang: str) -> GeneratedQuestions:
-    """Génère les questions STAR et les manifestations observables d'une capacité.
+def generate_fiche_risque(capacity_id: str, lang: str) -> GeneratedRisque:
+    """Calls Ollama to generate risk_insufficient and risk_excessive for one capacity.
+
+    Args:
+        capacity_id: e.g. "I1a"
+        lang: active UI language ("fr" or "en"); model responds in this language.
+
+    Returns:
+        GeneratedRisque populated from the JSON response.
+
+    Raises:
+        RuntimeError: if Ollama is unreachable or the response is not valid JSON.
+    """
+    params = _load_params()
+    ollama_cfg = params["ollama"]
+    url = ollama_cfg["url"]
+    model = ollama_cfg["model"]
+    timeout = int(ollama_cfg.get("timeout", 10))
+    system_prompt = params.get("system_prompt", "")
+
+    axioms = _load_axioms()
+    canonical_name = _load_canonical_name(capacity_id, lang)
+
+    level_code = capacity_id[0]
+    axis_number = capacity_id[1]
+    pole_code = capacity_id[2]
+
+    ontology = axioms["r6_ontology"]
+    level_info = ontology["levels"][level_code]
+    axis_info = ontology["axes"][int(axis_number)]
+    pole_info = ontology["poles"][pole_code]
+
+    halliday_context = _halliday_context_for_level(_load_halliday_spec(), level_code)
+
+    lang_name = "French" if lang == "fr" else "US English"
+    user_prompt = load_prompt(
+        "generate_fiche_risque",
+        lang_name=lang_name,
+        capacity_id=capacity_id,
+        level_name=level_info["name"],
+        level_code=level_code,
+        axis_name=axis_info["name"],
+        axis_number=axis_number,
+        pole_name=pole_info["name"],
+        pole_code=pole_code,
+        canonical_name=canonical_name,
+        halliday_context=halliday_context,
+    )
+
+    raw = _call_ollama(url, model, system_prompt, user_prompt, timeout)
+    return _parse_risque_response(raw)
+
+
+def generate_questions(capacity_id: str, lang: str) -> list[str]:
+    """Génère les 10 questions d'entretien pour une capacité.
 
     Args:
         capacity_id: Identifiant de la capacité (ex. ``"I1a"``).
         lang: Langue active (``"fr"`` ou ``"en"``).
 
     Returns:
-        GeneratedQuestions avec la liste de questions et les items par catégorie.
+        Liste de 10 textes de questions d'entretien.
+
+    Raises:
+        RuntimeError: Si Ollama est inaccessible ou la réponse n'est pas un JSON valide.
+    """
+    params = _load_params()
+    ollama_cfg = params["ollama"]
+    url = ollama_cfg["url"]
+    model = ollama_cfg["model"]
+    timeout = int(ollama_cfg.get("timeout", 10))
+    system_prompt = params.get("system_prompt", "")
+
+    axioms = _load_axioms()
+    canonical_name = _load_canonical_name(capacity_id, lang)
+
+    level_code = capacity_id[0]
+    axis_number = capacity_id[1]
+    pole_code = capacity_id[2]
+
+    ontology = axioms["r6_ontology"]
+    level_info = ontology["levels"][level_code]
+    axis_info = ontology["axes"][int(axis_number)]
+    pole_info = ontology["poles"][pole_code]
+
+    interview_rules = _load_interview_rules(level_code)
+
+    lang_name = "French" if lang == "fr" else "US English"
+    user_prompt = load_prompt(
+        "generate_questions",
+        lang_name=lang_name,
+        capacity_id=capacity_id,
+        level_name=level_info["name"],
+        level_code=level_code,
+        axis_name=axis_info["name"],
+        axis_number=axis_number,
+        pole_name=pole_info["name"],
+        pole_code=pole_code,
+        canonical_name=canonical_name,
+        interview_target=interview_rules["interview_target"],
+        participant_1=interview_rules["participant_1"],
+        process_type=interview_rules["process_type"],
+        participant_2=interview_rules["participant_2"],
+        proscription=interview_rules["proscription"],
+    )
+
+    raw = _call_ollama(url, model, system_prompt, user_prompt, timeout)
+    return _parse_questions_response(raw)
+
+
+def generate_questions_items(capacity_id: str, lang: str) -> dict[str, list[str]]:
+    """Génère les 4×5 items observables (OK/DEP/EXC/INS) pour une capacité.
+
+    Args:
+        capacity_id: Identifiant de la capacité (ex. ``"I1a"``).
+        lang: Langue active (``"fr"`` ou ``"en"``).
+
+    Returns:
+        Dictionnaire ``{code_catégorie: [texte, ...]}`` avec les clés OK, DEP, EXC, INS.
 
     Raises:
         RuntimeError: Si Ollama est inaccessible ou la réponse n'est pas un JSON valide.
@@ -134,11 +253,10 @@ def generate_questions(capacity_id: str, lang: str) -> GeneratedQuestions:
     pole_info = ontology["poles"][pole_code]
 
     halliday_context = _halliday_context_for_level(_load_halliday_spec(), level_code)
-    interview_rules = _load_interview_rules(level_code)
 
     lang_name = "French" if lang == "fr" else "US English"
     user_prompt = load_prompt(
-        "generate_questions",
+        "generate_questions_items",
         lang_name=lang_name,
         capacity_id=capacity_id,
         level_name=level_info["name"],
@@ -149,15 +267,10 @@ def generate_questions(capacity_id: str, lang: str) -> GeneratedQuestions:
         pole_code=pole_code,
         canonical_name=canonical_name,
         halliday_context=halliday_context,
-        interview_target=interview_rules["interview_target"],
-        participant_1=interview_rules["participant_1"],
-        process_type=interview_rules["process_type"],
-        participant_2=interview_rules["participant_2"],
-        proscription=interview_rules["proscription"],
     )
 
     raw = _call_ollama(url, model, system_prompt, user_prompt, timeout)
-    return _parse_questions_response(raw)
+    return _parse_items_response(raw)
 
 
 def generate_coaching(capacity_id: str, lang: str) -> GeneratedCoaching:
@@ -228,7 +341,7 @@ def translate_fiche(
     Args:
         capacity_id: Identifiant de la capacité (ex. ``"I1a"``).
         source_fields: Dictionnaire des champs sources avec les clés
-            ``name``, ``definition``, ``central_function``, ``observable``,
+            ``name``, ``definition``, ``central_function``,
             ``risk_insufficient``, ``risk_excessive``.
         source_lang: Code de la langue source (``"fr"`` ou ``"en"``).
         target_lang: Code de la langue cible (``"fr"`` ou ``"en"``).
@@ -273,7 +386,7 @@ def translate_fiche(
     )
 
     raw = _call_ollama(url, model, system_prompt, user_prompt, timeout)
-    return _parse_response(raw, capacity_id)
+    return _parse_content_response(raw, capacity_id)
 
 
 def translate_questions(
@@ -282,7 +395,7 @@ def translate_questions(
     source_lang: str,
     target_lang: str,
 ) -> list[str]:
-    """Traduit une liste de questions STAR d'une langue vers une autre via Ollama.
+    """Traduit une liste de questions d'entretien d'une langue vers une autre via Ollama.
 
     Args:
         capacity_id: Identifiant de la capacité (ex. ``"I1a"``).
@@ -515,7 +628,17 @@ def _load_canonical_name(capacity_id: str, lang: str) -> str:
         return capacity_id
 
 
+_OLLAMA_MAX_RETRIES = 3
+_OLLAMA_RETRY_DELAY = 2  # seconds between attempts
+
+
 def _call_ollama(url: str, model: str, system: str, prompt: str, timeout: int) -> str:
+    """Calls the Ollama API and returns the raw response string.
+
+    Retries up to _OLLAMA_MAX_RETRIES times on any error, waiting
+    _OLLAMA_RETRY_DELAY seconds between attempts. Raises RuntimeError
+    if all attempts fail.
+    """
     payload = json.dumps(
         {
             "model": model,
@@ -525,20 +648,29 @@ def _call_ollama(url: str, model: str, system: str, prompt: str, timeout: int) -
             "format": "json",
         }
     ).encode("utf-8")
-    req = urllib.request.Request(
-        f"{url.rstrip('/')}/api/generate",
-        data=payload,
-        headers={"Content-Type": "application/json"},
-        method="POST",
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=timeout) as response:
-            data = json.loads(response.read().decode("utf-8"))
-            return data["response"]
-    except urllib.error.URLError as e:
-        raise RuntimeError(f"Ollama unreachable at {url}: {e}") from e
-    except (KeyError, json.JSONDecodeError) as e:
-        raise RuntimeError(f"Unexpected Ollama response format: {e}") from e
+    endpoint = f"{url.rstrip('/')}/api/generate"
+
+    last_exc: Exception | None = None
+    for attempt in range(1, _OLLAMA_MAX_RETRIES + 1):
+        req = urllib.request.Request(
+            endpoint,
+            data=payload,
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as response:
+                data = json.loads(response.read().decode("utf-8"))
+                return data["response"]
+        except urllib.error.URLError as e:
+            last_exc = RuntimeError(f"Ollama unreachable at {url}: {e}")
+        except (KeyError, json.JSONDecodeError) as e:
+            last_exc = RuntimeError(f"Unexpected Ollama response format: {e}")
+
+        if attempt < _OLLAMA_MAX_RETRIES:
+            time.sleep(_OLLAMA_RETRY_DELAY)
+
+    raise last_exc
 
 
 def _fix_json_strings(text: str) -> str:
@@ -614,7 +746,73 @@ def _to_str(value, fallback: str = "") -> str:
     return str(value)
 
 
-def _parse_response(raw: str, capacity_id: str) -> GeneratedContent:
+def _parse_fiche_response(raw: str, capacity_id: str) -> GeneratedFiche:
+    """Parse la réponse Ollama pour generate_fiche().
+
+    Args:
+        raw: Chaîne JSON brute retournée par Ollama.
+        capacity_id: Utilisé comme fallback pour le champ ``name``.
+
+    Returns:
+        GeneratedFiche avec name, definition et central_function.
+
+    Raises:
+        RuntimeError: Si la réponse n'est pas un JSON valide.
+    """
+    clean = _strip_markdown_json(raw)
+    try:
+        data = json.loads(clean)
+    except json.JSONDecodeError as e:
+        raise RuntimeError(
+            f"Ollama response is not valid JSON: {e}\nRaw (first 300 chars): {raw[:300]}"
+        ) from e
+
+    return GeneratedFiche(
+        name=_to_str(data.get("name"), fallback=capacity_id),
+        definition=_cap_bullets(data.get("definition", "")),
+        central_function=_to_str(data.get("central_function")),
+    )
+
+
+def _parse_risque_response(raw: str) -> GeneratedRisque:
+    """Parse la réponse Ollama pour generate_fiche_risque().
+
+    Args:
+        raw: Chaîne JSON brute retournée par Ollama.
+
+    Returns:
+        GeneratedRisque avec risk_insufficient et risk_excessive.
+
+    Raises:
+        RuntimeError: Si la réponse n'est pas un JSON valide.
+    """
+    clean = _strip_markdown_json(raw)
+    try:
+        data = json.loads(clean)
+    except json.JSONDecodeError as e:
+        raise RuntimeError(
+            f"Ollama response is not valid JSON: {e}\nRaw (first 300 chars): {raw[:300]}"
+        ) from e
+
+    return GeneratedRisque(
+        risk_insufficient=_cap_bullets(data.get("risk_insufficient", "")),
+        risk_excessive=_cap_bullets(data.get("risk_excessive", "")),
+    )
+
+
+def _parse_content_response(raw: str, capacity_id: str) -> GeneratedContent:
+    """Parse la réponse Ollama pour translate_fiche().
+
+    Args:
+        raw: Chaîne JSON brute retournée par Ollama.
+        capacity_id: Utilisé comme fallback pour le champ ``name``.
+
+    Returns:
+        GeneratedContent sans observable.
+
+    Raises:
+        RuntimeError: Si la réponse n'est pas un JSON valide.
+    """
     clean = _strip_markdown_json(raw)
     try:
         data = json.loads(clean)
@@ -627,7 +825,6 @@ def _parse_response(raw: str, capacity_id: str) -> GeneratedContent:
         name=_to_str(data.get("name"), fallback=capacity_id),
         definition=_cap_bullets(data.get("definition", "")),
         central_function=_to_str(data.get("central_function")),
-        observable=_cap_bullets(data.get("observable", "")),
         risk_insufficient=_cap_bullets(data.get("risk_insufficient", "")),
         risk_excessive=_cap_bullets(data.get("risk_excessive", "")),
     )
@@ -701,14 +898,14 @@ def _parse_items_dict(raw: str, source: dict[str, list[str]]) -> dict[str, list[
     return result
 
 
-def _parse_questions_response(raw: str) -> GeneratedQuestions:
+def _parse_questions_response(raw: str) -> list[str]:
     """Parse la réponse Ollama pour generate_questions().
 
     Args:
         raw: Chaîne JSON brute retournée par Ollama.
 
     Returns:
-        GeneratedQuestions peuplé depuis les clés ``questions`` et ``observable_items``.
+        Liste de textes de questions d'entretien.
 
     Raises:
         RuntimeError: Si la réponse n'est pas un JSON valide.
@@ -721,21 +918,39 @@ def _parse_questions_response(raw: str) -> GeneratedQuestions:
             f"Ollama response is not valid JSON: {e}\nRaw (first 300 chars): {raw[:300]}"
         ) from e
 
-    # Normalise la liste de questions : accepte strings ou listes de strings.
     raw_questions = data.get("questions", [])
     if isinstance(raw_questions, list):
-        questions = [str(q).strip() for q in raw_questions if str(q).strip()]
-    else:
-        questions = [
-            line.strip(" -") for line in str(raw_questions).splitlines() if line.strip()
-        ]
+        return [str(q).strip() for q in raw_questions if str(q).strip()]
+    return [
+        line.strip(" -") for line in str(raw_questions).splitlines() if line.strip()
+    ]
 
-    # Normalise les items observables par catégorie, cap à 5 par catégorie.
+
+def _parse_items_response(raw: str) -> dict[str, list[str]]:
+    """Parse la réponse Ollama pour generate_questions_items().
+
+    Args:
+        raw: Chaîne JSON brute retournée par Ollama.
+
+    Returns:
+        Dictionnaire ``{code: [texte, ...]}`` pour les 4 catégories OK, DEP, EXC, INS.
+
+    Raises:
+        RuntimeError: Si la réponse n'est pas un JSON valide.
+    """
+    clean = _strip_markdown_json(raw)
+    try:
+        data = json.loads(clean)
+    except json.JSONDecodeError as e:
+        raise RuntimeError(
+            f"Ollama response is not valid JSON: {e}\nRaw (first 300 chars): {raw[:300]}"
+        ) from e
+
     raw_items = data.get("observable_items", {})
     if not isinstance(raw_items, dict):
         raw_items = {}
-    observable_items: dict[str, list[str]] = {}
-    for code in ("OK", "EXC", "DEP", "INS"):
+    result: dict[str, list[str]] = {}
+    for code in ("OK", "DEP", "EXC", "INS"):
         raw_cat = raw_items.get(code, [])
         if isinstance(raw_cat, list):
             items = [str(t).strip() for t in raw_cat if str(t).strip()]
@@ -743,9 +958,8 @@ def _parse_questions_response(raw: str) -> GeneratedQuestions:
             items = [
                 line.strip(" -") for line in str(raw_cat).splitlines() if line.strip()
             ]
-        observable_items[code] = items[:5]
-
-    return GeneratedQuestions(questions=questions, observable_items=observable_items)
+        result[code] = items[:5]
+    return result
 
 
 def _parse_coaching_response(raw: str) -> GeneratedCoaching:

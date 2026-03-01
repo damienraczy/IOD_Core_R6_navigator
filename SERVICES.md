@@ -19,7 +19,7 @@ def get_capacity_translation(session, capacity_id: str, lang: str) -> CapacityTr
 
 def upsert_capacity_translation(session, capacity_id: str, lang: str,
                                   **fields) -> CapacityTranslation
-    # fields: label, definition, central_function, observable,
+    # fields: label, definition, central_function,
     #         risk_insufficient, risk_excessive
     # Creates if (capacity_id, lang) does not exist; updates if it does.
 ```
@@ -204,7 +204,6 @@ class ExportConfig:
 3. **Fiche section** (if `include_fiche`):
    - Définition (Heading 2 + paragraph)
    - Fonction centrale (Heading 2 + paragraph)
-   - Observable (Heading 2 + paragraph — free-text field from `CapacityTranslation.observable`)
    - Observable items table: columns Category | Text (grouped by category, from `ObservableItem`)
    - Risque si insuffisant (Heading 2 + paragraph)
    - Risque si excessif (Heading 2 + paragraph)
@@ -221,29 +220,76 @@ For bulk export: each capacity starts on a new page.
 
 ## services/ai_generate.py
 
+Generation is split into five independent steps, each using a dedicated prompt file.
+
 ```python
 @dataclass
-class GeneratedContent:
+class GeneratedFiche:
     name: str               # Intitulé (canonical name or capacity_id fallback)
     definition: str
     central_function: str
-    observable: str         # Bullet string: "- phrase.\n- phrase.\n" (max 5 items)
+
+@dataclass
+class GeneratedRisque:
     risk_insufficient: str  # Bullet string: "- phrase.\n- phrase.\n" (max 5 items)
     risk_excessive: str     # Bullet string: "- phrase.\n- phrase.\n" (max 5 items)
 
-def generate_fiche(capacity_id: str, lang: str) -> GeneratedContent
-    # lang = current_lang() — generates content in the active UI language
-    # Reads params.yml: ollama.url, ollama.model, ollama.timeout, system_prompt
-    # Reads axioms.yml: level/axis/pole structure for the capacity
-    # Reads capacities_en.yml or capacities_fr.yml (based on lang) for canonical name
-    # Name resolution: capacities_*.yml[capacity_id] or capacity_id (fallback)
-    # Prompt: sent in English regardless of lang; model responds in lang
-    # Prompt includes: capacity_id, level, axis, pole, canonical name, R6 context
-    # Calls Ollama API via urllib (no SDK dependency)
-    # Expects JSON response — strips markdown delimiters (```json ... ```) before parsing
-    # Caps observable + risk lists to 5 items each
-    # Raises RuntimeError if Ollama unreachable or response unparseable
+@dataclass
+class GeneratedCoaching:
+    reflection_themes: str
+    intervention_levers: str
+    recommended_missions: str
+
+@dataclass
+class GeneratedContent:
+    """Result of translate_fiche() — full translation without observable."""
+    name: str
+    definition: str
+    central_function: str
+    risk_insufficient: str
+    risk_excessive: str
+
+def generate_fiche(capacity_id: str, lang: str) -> GeneratedFiche
+    # Generates label, definition, central_function only.
+    # Prompt file: generate_fiche.txt
+    # Used by: TabFiche [Générer] button (UI), cli/populate_db.py section "fiche"
+
+def generate_fiche_risque(capacity_id: str, lang: str) -> GeneratedRisque
+    # Generates risk_insufficient and risk_excessive only.
+    # Prompt file: generate_fiche_risque.txt
+    # Used by: cli/populate_db.py section "risque"
+
+def generate_questions(capacity_id: str, lang: str) -> list[str]
+    # Generates 10 interview questions. Returns a plain list of strings.
+    # Prompt file: generate_questions.txt
+    # Used by: cli/populate_db.py section "questions"
+
+def generate_questions_items(capacity_id: str, lang: str) -> dict[str, list[str]]
+    # Generates 4×5 observable items (OK/EXC/DEP/INS).
+    # Returns: {"OK": [...], "EXC": [...], "DEP": [...], "INS": [...]}
+    # Prompt file: generate_questions_items.txt
+    # Used by: cli/populate_db.py section "items"
+
+def generate_coaching(capacity_id: str, lang: str) -> GeneratedCoaching
+    # Generates coaching fields.
+    # Prompt file: generate_coaching.txt
+    # Used by: cli/populate_db.py section "coaching"
+
+def translate_fiche(capacity_id: str, source_lang: str, target_lang: str,
+                    source_fields: dict) -> GeneratedContent
+    # Translates fiche content (without observable) to target_lang.
+    # Prompt file: translate_fiche.txt
+    # Used by: cli/translate_db.py
 ```
+
+Common behaviour for all generation functions:
+- Reads `params.yml`: `ollama.url`, `ollama.model`, `ollama.timeout`, `system_prompt`
+- Reads `axioms.yml` for level/axis/pole structure of the capacity
+- Reads `capacities_fr.yml` or `capacities_en.yml` (based on `lang`) for canonical name
+- Name resolution: `capacities_*.yml[capacity_id]` → fallback to `capacity_id`
+- Calls Ollama API via `urllib` (no SDK dependency)
+- Expects JSON response — strips markdown delimiters (` ```json … ``` `) before parsing
+- Raises `RuntimeError` if Ollama unreachable or response unparseable
 
 ### params.yml structure (project root)
 
@@ -280,9 +326,11 @@ def init_db(engine: Engine, seed_capacities: bool = True) -> None
     # 2. Runs _migrate_to_translation_tables(): detects old _fr/_en columns via
     #    PRAGMA table_info, copies data to *_translation tables, then rebuilds
     #    the four affected tables to drop legacy columns.
-    # 3. Inserts reference data (level, axis, pole, observable_category,
+    # 3. Runs _migrate_drop_observable_column(): drops the `observable` column
+    #    from capacity_translation if it still exists (SQLite table rebuild).
+    # 4. Inserts reference data (level, axis, pole, observable_category,
     #    app_setting) using session.merge() — idempotent.
-    # 4. If seed_capacities=True: seeds 18 canonical Capacity rows and their
+    # 5. If seed_capacities=True: seeds 18 canonical Capacity rows and their
     #    CapacityTranslation (lang='fr', label=capacity_id) and Coaching rows.
 ```
 

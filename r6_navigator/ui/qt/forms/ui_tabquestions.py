@@ -95,6 +95,11 @@ class Ui_TabQuestions(object):
 
         self.items_header.addItem(self.spacerItem1)
 
+        self.btn_generer_items = QPushButton(TabQuestions)
+        self.btn_generer_items.setObjectName(u"btn_generer_items")
+
+        self.items_header.addWidget(self.btn_generer_items)
+
         self.btn_new_item = QPushButton(TabQuestions)
         self.btn_new_item.setObjectName(u"btn_new_item")
 
@@ -132,6 +137,10 @@ class Ui_TabQuestions(object):
 #endif // QT_CONFIG(tooltip)
         self.btn_new_question.setText(QCoreApplication.translate("TabQuestions", u"+ Nouvelle question", None))
         self.lbl_items_title.setText(QCoreApplication.translate("TabQuestions", u"Manifestations observables", None))
+        self.btn_generer_items.setText(QCoreApplication.translate("TabQuestions", u"G\u00e9n\u00e9rer items", None))
+#if QT_CONFIG(tooltip)
+        self.btn_generer_items.setToolTip(QCoreApplication.translate("TabQuestions", u"G\u00e9n\u00e9rer les manifestations observables via IA", None))
+#endif // QT_CONFIG(tooltip)
         self.btn_new_item.setText(QCoreApplication.translate("TabQuestions", u"+ Nouvel item", None))
         ___qtablewidgetitem = self.table_observable_items.horizontalHeaderItem(0)
         ___qtablewidgetitem.setText(QCoreApplication.translate("TabQuestions", u"Cat\u00e9gorie", None));

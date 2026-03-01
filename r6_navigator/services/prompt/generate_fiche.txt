@@ -25,24 +25,6 @@ central_function: 3 continuous sentences (not a bullet list) describing the stra
 - Apply Halliday rules for level {level_code}
 - Do not use ellipsis; include the explicit subject in each sentence
 
-observable: 5 sentences describing the concrete, typical manifestations of this capacity when it is present and operational at the NORMAL expected level — neither deficient nor excessive.
-- Each sentence MUST use the level-appropriate explicit subject
-- Each sentence MUST use the correct Halliday process type for level {level_code}
-- Each sentence must be less than 20 words
-- Format: bullet list `- Sentence.\n`
-
-risk_insufficient: 5 sentences describing observable signs of DEFICIT — the capacity is absent, underdeveloped, or chronically avoided, causing measurable dysfunction.
-- Each sentence MUST use the level-appropriate explicit subject
-- Each sentence MUST use the correct Halliday process type for level {level_code}
-- Each sentence must be less than 20 words
-- Format: bullet list `- Sentence.\n`
-
-risk_excessive: 5 sentences describing observable signs of PATHOLOGICAL OVERUSE — the capacity is overactivated, rigid, compulsive, or deployed so far beyond its useful range that it creates dysfunction (over-control, rigidity, systemic imbalance). This is NOT about high performance or surpassing expectations; it describes a dysfunctional extreme.
-- Each sentence MUST use the level-appropriate explicit subject
-- Each sentence MUST use the correct Halliday process type for level {level_code}
-- Each sentence must be less than 20 words
-- Format: bullet list `- Sentence.\n`
-
 === OUTPUT ===
 Return ONLY a valid JSON object. No markdown fences, no preamble, no trailing text.
 
@@ -50,6 +32,3 @@ Exact keys and value types:
   name: string — exact canonical label
   definition: string — formatted as bullet list "- sentence.\n" × 5
   central_function: string — 3 continuous prose sentences (no bullets)
-  observable: string — formatted as bullet list "- sentence.\n" × 5
-  risk_insufficient: string — formatted as bullet list "- sentence.\n" × 5
-  risk_excessive: string — formatted as bullet list "- sentence.\n" × 5

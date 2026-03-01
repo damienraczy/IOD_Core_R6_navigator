@@ -2,7 +2,7 @@
 """CLI de peuplement de la base de données R6 Navigator via génération IA.
 
 Parcourt toutes les capacités et génère — pour chaque langue demandée — les
-contenus Fiche, Questions/Manifestations observables et Coaching.
+contenus Fiche, Risques, Questions, Items observables et Coaching.
 
 Usage:
     python cli/populate_db.py                        # complète les données manquantes (fr)
@@ -31,13 +31,15 @@ from r6_navigator.services import crud
 from r6_navigator.services.ai_generate import (
     generate_coaching,
     generate_fiche,
+    generate_fiche_risque,
     generate_questions,
+    generate_questions_items,
 )
 
 _DB_PATH = _ROOT / "r6_navigator.db"
 
 # ── Sections disponibles ───────────────────────────────────────────────────────
-_ALL_SECTIONS = ("fiche", "questions", "coaching")
+_ALL_SECTIONS = ("fiche", "risque", "questions", "items", "coaching")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -49,6 +51,13 @@ def _fiche_is_missing(session_factory, capacity_id: str, lang: str) -> bool:
     with session_factory() as session:
         trans = crud.get_capacity_translation(session, capacity_id, lang)
     return trans is None or not (trans.definition or "").strip()
+
+
+def _risque_is_missing(session_factory, capacity_id: str, lang: str) -> bool:
+    """Retourne True si les risques sont absents ou incomplets (risk_insufficient vide)."""
+    with session_factory() as session:
+        trans = crud.get_capacity_translation(session, capacity_id, lang)
+    return trans is None or not (trans.risk_insufficient or "").strip()
 
 
 def _questions_are_missing(session_factory, capacity_id: str) -> bool:
@@ -77,7 +86,7 @@ def _coaching_is_missing(session_factory, capacity_id: str, lang: str) -> bool:
 def populate_fiche(
     session_factory, capacity_id: str, lang: str, full: bool
 ) -> bool:
-    """Génère et persiste le contenu Fiche pour une capacité et une langue.
+    """Génère et persiste l'information générale (label, définition, fonction centrale).
 
     Args:
         session_factory: Factory de sessions SQLAlchemy.
@@ -101,7 +110,34 @@ def populate_fiche(
             label=content.name,
             definition=content.definition,
             central_function=content.central_function,
-            observable=content.observable,
+        )
+    return True
+
+
+def populate_risque(
+    session_factory, capacity_id: str, lang: str, full: bool
+) -> bool:
+    """Génère et persiste les risques (insuffisant et excessif).
+
+    Args:
+        session_factory: Factory de sessions SQLAlchemy.
+        capacity_id: Identifiant de la capacité (ex. ``"I1a"``).
+        lang: Langue cible (``"fr"`` ou ``"en"``).
+        full: Si True, regénère même si des données existent déjà.
+
+    Returns:
+        True si une génération a été effectuée, False si ignorée.
+    """
+    if not full and not _risque_is_missing(session_factory, capacity_id, lang):
+        return False
+
+    content = generate_fiche_risque(capacity_id, lang)
+
+    with session_factory() as session:
+        crud.upsert_capacity_translation(
+            session,
+            capacity_id,
+            lang,
             risk_insufficient=content.risk_insufficient,
             risk_excessive=content.risk_excessive,
         )
@@ -111,10 +147,10 @@ def populate_fiche(
 def populate_questions(
     session_factory, capacity_id: str, lang: str, full: bool
 ) -> bool:
-    """Génère et persiste les questions STAR et les items observables.
+    """Génère et persiste les 10 questions d'entretien.
 
-    En mode full, supprime d'abord les questions et items existants avant
-    de créer les nouvelles entrées.
+    En mode full, supprime d'abord les questions existantes avant de créer
+    les nouvelles entrées.
 
     Args:
         session_factory: Factory de sessions SQLAlchemy.
@@ -125,34 +161,61 @@ def populate_questions(
     Returns:
         True si une génération a été effectuée, False si ignorée.
     """
-    questions_missing = _questions_are_missing(session_factory, capacity_id)
-    items_missing = _items_are_missing(session_factory, capacity_id)
-    if not full and not (questions_missing or items_missing):
+    if not full and not _questions_are_missing(session_factory, capacity_id):
         return False
 
-    content = generate_questions(capacity_id, lang)
+    questions = generate_questions(capacity_id, lang)
 
     with session_factory() as session:
-        # Suppression des données existantes en mode full rebuild.
+        # Suppression des questions existantes en mode full rebuild.
         if full:
             for q in crud.get_questions(session, capacity_id):
                 crud.delete_question(session, q.question_id)
-            for item in crud.get_observable_items(session, capacity_id):
-                crud.delete_observable_item(session, item.item_id)
 
         # Création des questions.
         q_ids: list[int] = []
-        for text in content.questions:
+        for text in questions:
             if text.strip():
                 q = crud.create_question(session, capacity_id, text.strip(), lang)
                 q_ids.append(q.question_id)
         if q_ids:
             crud.reorder_questions(session, capacity_id, q_ids)
 
+    return True
+
+
+def populate_items(
+    session_factory, capacity_id: str, lang: str, full: bool
+) -> bool:
+    """Génère et persiste les 4×5 items observables (OK/DEP/EXC/INS).
+
+    En mode full, supprime d'abord les items existants avant de créer
+    les nouvelles entrées.
+
+    Args:
+        session_factory: Factory de sessions SQLAlchemy.
+        capacity_id: Identifiant de la capacité.
+        lang: Langue cible.
+        full: Si True, regénère même si des données existent déjà.
+
+    Returns:
+        True si une génération a été effectuée, False si ignorée.
+    """
+    if not full and not _items_are_missing(session_factory, capacity_id):
+        return False
+
+    items = generate_questions_items(capacity_id, lang)
+
+    with session_factory() as session:
+        # Suppression des items existants en mode full rebuild.
+        if full:
+            for item in crud.get_observable_items(session, capacity_id):
+                crud.delete_observable_item(session, item.item_id)
+
         # Création des items observables par catégorie.
         for code in ("OK", "EXC", "DEP", "INS"):
             item_ids: list[int] = []
-            for text in content.observable_items.get(code, []):
+            for text in items.get(code, []):
                 if text.strip():
                     item = crud.create_observable_item(
                         session, capacity_id, code, text.strip(), lang
@@ -201,7 +264,9 @@ def populate_coaching(
 
 _SECTION_FN = {
     "fiche": populate_fiche,
+    "risque": populate_risque,
     "questions": populate_questions,
+    "items": populate_items,
     "coaching": populate_coaching,
 }
 
@@ -218,7 +283,7 @@ def run(
         full: Si True, regénère toutes les données même si elles existent.
         langs: Liste des langues à générer (ex. ``["fr", "en"]``).
         capacity_ids: Liste de capacités à traiter, ou None pour toutes.
-        skip: Sections à sauter (sous-ensemble de ``fiche``, ``questions``, ``coaching``).
+        skip: Sections à sauter (sous-ensemble de ``_ALL_SECTIONS``).
     """
     if not _DB_PATH.exists():
         print(f"[ERREUR] Base de données introuvable : {_DB_PATH}", file=sys.stderr)
@@ -263,9 +328,6 @@ def run(
                 label = f" {section}"
                 try:
                     t0 = time.monotonic()
-                    # questions ne dépend pas de la langue pour l'existence
-                    # (les items sont partagés entre langues), mais la génération
-                    # utilise la langue pour le contenu textuel.
                     done = fn(session_factory, cid, lang, full)
                     elapsed = time.monotonic() - t0
                     if done:
@@ -307,7 +369,7 @@ def _build_parser() -> argparse.ArgumentParser:
             Peuple la base de données R6 Navigator via génération IA (Ollama).
 
             Par défaut, complète uniquement les données manquantes.
-            Avec --full, regénère tout (questions existantes supprimées et recréées).
+            Avec --full, regénère tout (questions/items existants supprimés et recréés).
         """),
     )
     parser.add_argument(
@@ -336,7 +398,7 @@ def _build_parser() -> argparse.ArgumentParser:
         metavar="SECTION",
         default=[],
         choices=list(_ALL_SECTIONS),
-        help="sections à sauter : fiche, questions, coaching",
+        help="sections à sauter : fiche, risque, questions, items, coaching",
     )
     return parser
 

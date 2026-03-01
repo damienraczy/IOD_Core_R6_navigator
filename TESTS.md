@@ -84,15 +84,19 @@ Provides a `session_with_capacities` fixture:
 
 ## tests/test_export.py
 
-Uses the `session` fixture. capacities are created inline in each test.
+Uses the `session` fixture. Capacities are created inline in each test.
 
 | Test | Description |
 |------|-------------|
 | `test_export_single_capacity_fr` | Generates DOCX from FR translation — file exists, non-empty |
 | `test_export_single_capacity_en` | Generates DOCX from EN translation (added via `upsert_capacity_translation`) |
 | `test_export_includes_fiche_content` | Document body contains the `definition` translation text |
+| `test_export_bullet_rendering` | `risk_insufficient` bullet text appears correctly in the DOCX output |
 | `test_export_includes_questions` | Document contains question text from `QuestionTranslation` |
+| `test_export_observable_items_under_questions` | Observable items appear under the Questions section, grouped by category |
 | `test_export_includes_coaching` | Document contains coaching text from `CoachingTranslation` |
 | `test_export_excludes_fiche_when_flagged` | `include_fiche=False` → definition text absent from output |
 | `test_export_bulk` | Multiple capacities → one file, ≥2 Heading 1 entries |
+| `test_export_both_languages` | `language='both'` → one file containing FR and EN sections for each capacity |
 | `test_export_empty_fields_no_crash` | No EN translation exists → all fields empty → no exception |
+| `test_make_filename` | `_make_filename()` returns a slug-safe string derived from capacity_id and label |

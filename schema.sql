@@ -1,7 +1,7 @@
 -- =============================================================================
 -- R6 Navigator — Reference Schema
 -- SQLite 3
--- Version : 2.1  /  2026-02-26
+-- Version : 2.2  /  2026-03-01
 --
 -- DOCUMENTATION ONLY.
 -- The SQLAlchemy ORM (db/models.py) is the authoritative source for table
@@ -98,7 +98,6 @@ CREATE TABLE capacity_translation (
     label                   TEXT NOT NULL DEFAULT '',
     definition              TEXT,
     central_function        TEXT,
-    observable              TEXT,
     risk_insufficient       TEXT,
     risk_excessive          TEXT,
 

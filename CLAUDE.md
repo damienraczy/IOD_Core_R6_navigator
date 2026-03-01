@@ -128,13 +128,25 @@ Key facts:
 
 - Visible at all times in the Fiche tab (no edit mode required)
 - Click → calls Ollama in a background `QThread` (`_GenerateWorker`) — UI stays responsive
-- Populates: **Intitulé**, **Définition**, **Fonction centrale**, **Observable** (5 tirets),
-  **Risque si insuffisant** (5 tirets), **Risque si excessif** (5 tirets)
-- **Observable**, **Risque si insuffisant** and **Risque si excessif** are formatted as `- item.\n` bullet blocks (max 5 each)
+- Populates: **Intitulé**, **Définition**, **Fonction centrale** (3 fields via `generate_fiche()`)
 - Generation language matches the active UI language (`current_lang()`)
 - User reviews the generated content, then saves manually via `[Modifier]` → `[Enregistrer]`
 - Canonical name resolution: `capacities_fr.yml[capacity_id]` (or `capacities_en.yml` for EN) → fallback to `capacity_id`
 - Ollama endpoint and model are configured in `params.yml` at the project root
+
+### CLI generation (`cli/populate_db.py`)
+
+Five independent sections, each with its own prompt and generation function:
+
+| Section | Function | Fields populated |
+|---------|----------|-----------------|
+| `fiche` | `generate_fiche()` | `label`, `definition`, `central_function` |
+| `risque` | `generate_fiche_risque()` | `risk_insufficient`, `risk_excessive` |
+| `questions` | `generate_questions()` | Interview questions (10 per capacity) |
+| `items` | `generate_questions_items()` | Observable items 4×5 (OK/EXC/DEP/INS) |
+| `coaching` | `generate_coaching()` | Coaching fields |
+
+Use `--skip SECTION` to omit sections, `--capacity ID…` to target specific capacities.
 
 ---
 

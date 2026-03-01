@@ -48,6 +48,7 @@ def get_session_factory(engine: Engine) -> sessionmaker:
 def init_db(engine: Engine, seed_capacities: bool = True) -> None:
     Base.metadata.create_all(engine)
     _migrate_to_translation_tables(engine)
+    _migrate_drop_observable_column(engine)
     _seed_reference_data(engine)
     if seed_capacities:
         _seed_capacities(engine)
@@ -105,6 +106,53 @@ def _migrate_to_translation_tables(engine: Engine) -> None:
         cur.execute("DROP TABLE capacity")
         cur.execute("ALTER TABLE capacity_v2 RENAME TO capacity")
 
+        cur.execute("PRAGMA foreign_keys = ON")
+        raw.commit()
+    except Exception:
+        raw.rollback()
+        raise
+    finally:
+        raw.close()
+
+
+# ---------------------------------------------------------------------------
+# Migration — drop legacy observable column from capacity_translation
+# ---------------------------------------------------------------------------
+
+def _migrate_drop_observable_column(engine: Engine) -> None:
+    """Drops the observable column from capacity_translation if it exists. No-op otherwise."""
+    with engine.connect() as conn:
+        rows = conn.execute(text("PRAGMA table_info(capacity_translation)")).fetchall()
+        if not any(r[1] == "observable" for r in rows):
+            return  # Already migrated or fresh DB
+
+    raw = engine.raw_connection()
+    try:
+        cur = raw.cursor()
+        cur.execute("PRAGMA foreign_keys = OFF")
+        cur.execute("""
+            CREATE TABLE capacity_translation_v2 (
+                capacity_id TEXT NOT NULL
+                    REFERENCES capacity(capacity_id) ON DELETE CASCADE,
+                lang TEXT NOT NULL,
+                label TEXT NOT NULL DEFAULT '',
+                definition TEXT,
+                central_function TEXT,
+                risk_insufficient TEXT,
+                risk_excessive TEXT,
+                PRIMARY KEY (capacity_id, lang)
+            )
+        """)
+        cur.execute("""
+            INSERT INTO capacity_translation_v2
+                (capacity_id, lang, label, definition, central_function,
+                 risk_insufficient, risk_excessive)
+            SELECT capacity_id, lang, label, definition, central_function,
+                   risk_insufficient, risk_excessive
+            FROM capacity_translation
+        """)
+        cur.execute("DROP TABLE capacity_translation")
+        cur.execute("ALTER TABLE capacity_translation_v2 RENAME TO capacity_translation")
         cur.execute("PRAGMA foreign_keys = ON")
         raw.commit()
     except Exception:

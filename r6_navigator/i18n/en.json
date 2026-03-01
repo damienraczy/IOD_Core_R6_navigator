@@ -39,7 +39,6 @@
   "fiche.label": "Label",
   "fiche.definition": "Definition",
   "fiche.central_function": "Central function",
-  "fiche.observable": "Observable",
   "fiche.risk_insufficient": "Risk if insufficient",
   "fiche.risk_excessive": "Risk if excessive",
 
@@ -67,6 +66,8 @@
   "btn.restore_db": "Restore DB",
   "btn.export_docx": "Create DOCX",
   "btn.generate": "Generate",
+  "btn.generate_risque": "Generate risks",
+  "btn.generate_items": "Generate items",
   "btn.judge": "Judge",
   "btn.move_up": "↑",
   "btn.move_down": "↓",

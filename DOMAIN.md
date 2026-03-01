@@ -69,7 +69,6 @@ Text content for a capacity in one language. One row per `(capacity_id, lang)`.
 | `label`            | TEXT    | Required (not nullable) |
 | `definition`       | TEXT    |                         |
 | `central_function` | TEXT    |                         |
-| `observable`       | TEXT    |                         |
 | `risk_insufficient`| TEXT    |                         |
 | `risk_excessive`   | TEXT    |                         |
 
@@ -219,18 +218,6 @@ Persisted in the `app_setting` key-value table.
 ### Save / Restore base
 - Save: copy the `.db` file to `backups/r6_navigator_YYYYMMDD_HHMMSS.db`.
 - Restore: file picker → replace active DB after confirmation → reload full UI.
-
----
-
-## Terminology adaptation (UI only, not stored in DB)
-
-The field label for `observable` adapts to the selected capacity's level (via i18n key):
-
-| Level | i18n key         | Label (fr)  | Label (en)  |
-|-------|------------------|-------------|-------------|
-| All   | `fiche.observable` | Observable  | Observable  |
-
-This is a single key — the label is identical across all levels.
 
 ---
 

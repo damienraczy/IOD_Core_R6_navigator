@@ -35,14 +35,14 @@ _CATEGORY_CODES = ("OK", "EXC", "DEP", "INS")
 # ────────────────────────────────────────────────────────────
 
 class _GenerateWorker(QThread):
-    """Thread de fond pour l'appel Ollama — génère questions et manifestations observables.
+    """Thread de fond pour l'appel Ollama — génère les questions d'entretien.
 
     Signals:
-        finished: Émis avec le GeneratedQuestions en cas de succès.
+        finished: Émis avec la list[str] des questions en cas de succès.
         error: Émis avec le message d'erreur en cas d'échec.
     """
 
-    finished = Signal(object)   # GeneratedQuestions
+    finished = Signal(object)   # list[str]
     error = Signal(str)
 
     def __init__(self, capacity_id: str, lang: str) -> None:
@@ -62,6 +62,42 @@ class _GenerateWorker(QThread):
             from r6_navigator.services.ai_generate import generate_questions
             content = generate_questions(self._capacity_id, self._lang)
             self.finished.emit(content)
+        except Exception as exc:
+            self.error.emit(str(exc))
+
+
+# ────────────────────────────────────────────────────────────
+# Worker de génération des items observables (thread de fond)
+# ────────────────────────────────────────────────────────────
+
+class _GenerateItemsWorker(QThread):
+    """Thread de fond pour générer les 4×5 items observables via Ollama.
+
+    Signals:
+        finished: Émis avec le dict[str, list[str]] des items en cas de succès.
+        error: Émis avec le message d'erreur en cas d'échec.
+    """
+
+    finished = Signal(object)   # dict[str, list[str]]
+    error = Signal(str)
+
+    def __init__(self, capacity_id: str, lang: str) -> None:
+        """Initialise le worker avec les paramètres de la requête.
+
+        Args:
+            capacity_id: Identifiant de la capacité à générer (ex. ``"I1a"``).
+            lang: Code langue de génération (``"fr"`` ou ``"en"``).
+        """
+        super().__init__()
+        self._capacity_id = capacity_id
+        self._lang = lang
+
+    def run(self) -> None:
+        """Exécute l'appel Ollama dans le thread de fond."""
+        try:
+            from r6_navigator.services.ai_generate import generate_questions_items
+            items = generate_questions_items(self._capacity_id, self._lang)
+            self.finished.emit(items)
         except Exception as exc:
             self.error.emit(str(exc))
 
@@ -237,6 +273,7 @@ class TabQuestions(QWidget, Ui_TabQuestions):
         self._deleted_question_ids: list[int] = []
         self._deleted_item_ids: list[int] = []
         self._worker: _GenerateWorker | None = None
+        self._items_worker: _GenerateItemsWorker | None = None
 
         # Juge LLM
         self._original_snapshot: dict | None = None
@@ -389,6 +426,7 @@ class TabQuestions(QWidget, Ui_TabQuestions):
     def _setup_connections(self) -> None:
         """Connecte les boutons d'ajout, de génération, de jugement et le signal de modification du tableau."""
         self.btn_generer.clicked.connect(self._on_generate)
+        self.btn_generer_items.clicked.connect(self._on_generate_items)
         self.btn_juger.clicked.connect(self._on_juger_clicked)
         self.btn_new_question.clicked.connect(self._add_new_question)
         self.btn_new_item.clicked.connect(self._add_new_item)
@@ -397,6 +435,7 @@ class TabQuestions(QWidget, Ui_TabQuestions):
     def _retranslate(self) -> None:
         """Met à jour tous les libellés de l'onglet selon la langue active."""
         self.btn_generer.setText(t("btn.generate"))
+        self.btn_generer_items.setText(t("btn.generate_items"))
         self.btn_juger.setText(t("btn.judge"))
         self.lbl_questions_title.setText(t("questions.section_title"))
         self.btn_new_question.setText(t("questions.new"))
@@ -733,37 +772,26 @@ class TabQuestions(QWidget, Ui_TabQuestions):
         self._worker.start()
 
     def _on_generate_done(self, content) -> None:
-        """Remplace les questions et items observables par le contenu généré.
+        """Remplace les questions par le contenu généré.
 
-        Vide les listes existantes (marque les IDs existants pour suppression),
-        reconstruit les widgets avec le nouveau contenu, puis marque comme modifié.
+        Marque les questions existantes pour suppression, reconstruit les
+        widgets avec le nouveau contenu, puis marque comme modifié.
+        Les items observables ne sont pas touchés par ce bouton.
 
         Args:
-            content: Objet GeneratedQuestions retourné par generate_questions().
+            content: list[str] retourné par generate_questions().
         """
         self.btn_generer.setEnabled(True)
         self._worker = None
 
-        # Marque tous les IDs existants pour suppression lors du prochain save().
+        # Marque les questions existantes pour suppression lors du prochain save().
         for row in self._question_rows:
             if row.question_id is not None:
                 self._deleted_question_ids.append(row.question_id)
-        for item in self._item_data:
-            if item["item_id"] is not None:
-                self._deleted_item_ids.append(item["item_id"])
 
-        # Reconstruit les lignes de questions depuis le contenu généré.
-        q_data = [(None, text) for text in content.questions]
+        # Reconstruit les lignes de questions depuis la liste générée.
+        q_data = [(None, text) for text in content]
         self._rebuild_question_rows(q_data)
-
-        # Reconstruit les items observables en préservant l'ordre des catégories.
-        self._item_data = []
-        for code in _CATEGORY_CODES:
-            for text in content.observable_items.get(code, []):
-                self._item_data.append(
-                    {"item_id": None, "category_code": code, "text": text}
-                )
-        self._rebuild_items_table()
 
         self._mark_dirty()
 
@@ -775,6 +803,62 @@ class TabQuestions(QWidget, Ui_TabQuestions):
         """
         self.btn_generer.setEnabled(True)
         self._worker = None
+        QMessageBox.warning(self, t("error.generate"), message)
+
+    # ────────────────────────────────────────────────────────
+    # Génération IA — Items observables
+    # ────────────────────────────────────────────────────────
+
+    def _on_generate_items(self) -> None:
+        """Lance la génération des items observables dans un thread de fond."""
+        if self._current_capacity is None:
+            return
+        if self._items_worker is not None and self._items_worker.isRunning():
+            return
+        self.btn_generer_items.setEnabled(False)
+        self._items_worker = _GenerateItemsWorker(
+            self._current_capacity.capacity_id, current_lang()
+        )
+        self._items_worker.finished.connect(self._on_generate_items_done)
+        self._items_worker.error.connect(self._on_generate_items_error)
+        self._items_worker.start()
+
+    def _on_generate_items_done(self, items: dict) -> None:
+        """Remplace les items observables par le contenu généré.
+
+        Marque les items existants pour suppression, reconstruit le tableau
+        avec le nouveau contenu, puis marque comme modifié.
+        Les questions ne sont pas touchées par ce bouton.
+
+        Args:
+            items: dict[str, list[str]] retourné par generate_questions_items().
+        """
+        self.btn_generer_items.setEnabled(True)
+        self._items_worker = None
+
+        # Marque les items existants pour suppression lors du prochain save().
+        for item in self._item_data:
+            if item["item_id"] is not None:
+                self._deleted_item_ids.append(item["item_id"])
+
+        # Reconstruit les items observables en préservant l'ordre des catégories.
+        self._item_data = []
+        for code in _CATEGORY_CODES:
+            for text in items.get(code, []):
+                self._item_data.append(
+                    {"item_id": None, "category_code": code, "text": text}
+                )
+        self._rebuild_items_table()
+        self._mark_dirty()
+
+    def _on_generate_items_error(self, message: str) -> None:
+        """Affiche une erreur et réactive le bouton Générer items.
+
+        Args:
+            message: Description de l'erreur retournée par le worker.
+        """
+        self.btn_generer_items.setEnabled(True)
+        self._items_worker = None
         QMessageBox.warning(self, t("error.generate"), message)
 
     # ────────────────────────────────────────────────────────

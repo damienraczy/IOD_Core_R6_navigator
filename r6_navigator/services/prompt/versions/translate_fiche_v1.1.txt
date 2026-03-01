@@ -8,7 +8,7 @@ Capacity context:
 
 Translate faithfully, maintaining professional HR and competency framework terminology.
 Each sentence must comply with Halliday's transitivity rules for the level ({level_code}).
-Preserve the "- phrase.\n" bullet list format for definition, risk_insufficient, risk_excessive.
+Preserve the "- phrase.\n" bullet list format for definition, observable, risk_insufficient, risk_excessive.
 
 Source content:
 {source_content}
@@ -20,5 +20,6 @@ Exact keys and value types:
   name: string
   definition: string — bullet list "- phrase.\n" × 5
   central_function: string — 3 continuous prose sentences (no bullets)
+  observable: string — bullet list "- phrase.\n" × 5
   risk_insufficient: string — bullet list "- phrase.\n" × 5
   risk_excessive: string — bullet list "- phrase.\n" × 5

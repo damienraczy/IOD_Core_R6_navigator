@@ -85,12 +85,8 @@ All fields read-only by default. Edit mode activated by `[Modifier]` button.
 | Intitulé         | `QLineEdit`     | `label`                          |
 | Définition       | `QPlainTextEdit`| `definition`                     |
 | Fonction centrale| `QPlainTextEdit`| `central_function`               |
-| Observable       | `QPlainTextEdit`| `observable`                     |
 | Risque si insuffisant | `QPlainTextEdit` | `risk_insufficient`        |
 | Risque si excessif    | `QPlainTextEdit` | `risk_excessive`           |
-
-The "Observable" label (i18n key `fiche.observable`) is identical across all levels.
-This free-text field is separate from the structured `ObservableItem` list in the Questions tab.
 
 ---
 

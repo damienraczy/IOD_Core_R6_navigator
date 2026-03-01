@@ -233,7 +233,6 @@ def translate_fiche_section(
             "name": src.label or "",
             "definition": src.definition or "",
             "central_function": src.central_function or "",
-            "observable": src.observable or "",
             "risk_insufficient": src.risk_insufficient or "",
             "risk_excessive": src.risk_excessive or "",
         }
@@ -248,7 +247,6 @@ def translate_fiche_section(
             label=content.name,
             definition=content.definition,
             central_function=content.central_function,
-            observable=content.observable,
             risk_insufficient=content.risk_insufficient,
             risk_excessive=content.risk_excessive,
         )
