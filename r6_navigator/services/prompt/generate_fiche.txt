@@ -21,14 +21,17 @@ definition: 5 sentences describing what this capacity IS and what it encompasses
 - Each sentence must be less than 20 words
 - Format: bullet list `- Sentence.\n`
 
-central_function: 3 continuous sentences (not a bullet list) describing the strategic role and purpose of this capacity for executives and top managers.
-- Apply Halliday rules for level {level_code}
-- Do not use ellipsis; include the explicit subject in each sentence
+central_function: A continuous prose text of exactly 3 paragraphs (approximately 10 sentences and 150 words in total). This text is a foundational pivot. It must be written in clear, direct business language without any R6 theoretical jargon (do NOT use words like: isomorphism, pole, axis, emergence, constraint, agentive, instrumental).
+- Paragraph 1 (The Essence): Define the fundamental real-world purpose of this capacity. What organizational or strategic imperative does it answer?
+- Paragraph 2 (The Mechanics): Explain how this capacity actually operates on the ground to create value or stabilize the organization.
+- Paragraph 3 (The Impact): State the ultimate, measurable business benefit for the organization when this capacity is fully mastered.
+- Absolute Constraint 1: You MUST strictly apply the Halliday transitivity rules for level {level_code} to every single sentence in all 3 paragraphs. The grammatical subject of EVERY sentence must reflect the ontological nature of the level (Human individual for I, System/Process for O, Thinking Entity/Strategy for S).
+- Absolute Constraint 1: Be generic.
 
 === OUTPUT ===
 Return ONLY a valid JSON object. No markdown fences, no preamble, no trailing text.
 
 Exact keys and value types:
   name: string — exact canonical label
-  definition: string — formatted as bullet list "- sentence.\n" × 5
-  central_function: string — 3 continuous prose sentences (no bullets)
+  definition: string — formatted as bullet list "- sentence." × 5
+  central_function: string — 3 prose paragraphs as a list of three bullets "- sentence." × 3
