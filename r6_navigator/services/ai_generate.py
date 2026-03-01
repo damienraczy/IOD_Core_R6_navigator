@@ -241,7 +241,9 @@ def generate_fiche_risque(
         if definition.strip():
             capacity_content_lines.append(f"Definition:\n{definition.strip()}")
         if central_function.strip():
-            capacity_content_lines.append(f"Central function:\n{central_function.strip()}")
+            capacity_content_lines.append(
+                f"Central function:\n{central_function.strip()}"
+            )
     capacity_content = "\n\n".join(capacity_content_lines)
 
     lang_name = "French" if lang == "fr" else "US English"
@@ -744,7 +746,9 @@ def _load_halliday_context(level_code: str) -> str:
     ]
     if "audit_rule_inversion" in rules:
         lines.append(f"Audit rule (inversion test): {rules['audit_rule_inversion']}")
-    return "\n".join(lines)
+    ret = "\n".join(lines)
+    # print(ret)
+    return ret
 
 
 def _load_canonical_name(capacity_id: str, lang: str) -> str:

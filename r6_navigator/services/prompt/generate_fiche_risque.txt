@@ -16,6 +16,7 @@ Apply the rules above to every sentence you generate. Never omit the subject. Th
 
 These structural relationships define the specific mechanisms through which a deficit or excess of {capacity_id} propagates to adjacent capacities. Use them to anchor every risk bullet.
 {capacity_content}
+
 === STRUCTURAL RISK SEEDS ===
 Each of the 5 bullets in risk_insufficient AND risk_excessive must be grounded in one of the following R6 structural mechanisms, in this exact order:
 1. Polar imbalance — what happens to the twin pole (see relational context above) when {capacity_id} is absent / overactivated; the polar tension collapses or inverts
@@ -27,15 +28,13 @@ Each of the 5 bullets in risk_insufficient AND risk_excessive must be grounded i
 === FIELD SPECIFICATIONS ===
 
 risk_insufficient: 5 sentences describing observable GENERIC consequences of DEFICIT in the capacity on system. Each bullet must address one structural seed in the order above. Only the consequences of the deficit should be described.
-- Each sentence must be less than 20 words
-- Passive form, circumstances in head of sentence.
-- Only the consequences, not the causes, should be described.
-- Format: bullet list `- Sentence.\n`
 
 risk_excessive: 5 sentences describing observable GENERIC consequences of PATHOLOGICAL OVERUSE in the capacity on system. Each bullet must address one structural seed in the order above. Only the consequences of the excess should be described.
+
+- Circumstance MUST be generic
 - Each sentence must be less than 20 words
-- Passive form, circumstances in head of sentence.
-- Only the consequences, not the causes, should be described.
+- Passive form, **generic** Circumstance in head of sentence.
+- Output only the consequences (the risk), not the Circumstance.
 - Format: bullet list `- Sentence.\n`
 
 === OUTPUT ===
