@@ -144,7 +144,7 @@ def generate_fiche(capacity_id: str, lang: str) -> GeneratedFiche:
     axis_info = ontology["axes"][int(axis_number)]
     pole_info = ontology["poles"][pole_code]
 
-    halliday_context = _halliday_context_for_level(_load_halliday_spec(), level_code)
+    halliday_context = _load_halliday_context(level_code)
 
     lang_name = "French" if lang == "fr" else "US English"
     user_prompt = load_prompt(
@@ -197,7 +197,7 @@ def generate_fiche_risque(capacity_id: str, lang: str) -> GeneratedRisque:
     axis_info = ontology["axes"][int(axis_number)]
     pole_info = ontology["poles"][pole_code]
 
-    halliday_context = _halliday_context_for_level(_load_halliday_spec(), level_code)
+    halliday_context = _load_halliday_context(level_code)
 
     lang_name = "French" if lang == "fr" else "US English"
     user_prompt = load_prompt(
@@ -250,7 +250,7 @@ def generate_questions(capacity_id: str, lang: str) -> list[str]:
     axis_info = ontology["axes"][int(axis_number)]
     pole_info = ontology["poles"][pole_code]
 
-    interview_rules = _load_interview_rules(level_code)
+    interview_rules = _load_halliday_rules(level_code)
 
     lang_name = "French" if lang == "fr" else "US English"
     user_prompt = load_prompt(
@@ -307,7 +307,7 @@ def generate_questions_items(capacity_id: str, lang: str) -> dict[str, list[str]
     axis_info = ontology["axes"][int(axis_number)]
     pole_info = ontology["poles"][pole_code]
 
-    halliday_context = _halliday_context_for_level(_load_halliday_spec(), level_code)
+    halliday_context = _load_halliday_context(level_code)
 
     lang_name = "French" if lang == "fr" else "US English"
     user_prompt = load_prompt(
@@ -360,7 +360,7 @@ def generate_coaching(capacity_id: str, lang: str) -> GeneratedCoaching:
     axis_info = ontology["axes"][int(axis_number)]
     pole_info = ontology["poles"][pole_code]
 
-    halliday_context = _halliday_context_for_level(_load_halliday_spec(), level_code)
+    halliday_context = _load_halliday_context(level_code)
 
     lang_name = "French" if lang == "fr" else "US English"
     user_prompt = load_prompt(
@@ -645,76 +645,51 @@ def _load_axioms() -> dict:
         return yaml.safe_load(f)
 
 
-def _load_interview_rules(level_code: str) -> dict:
-    """Charge les paramètres d'entretien spécifiques au niveau depuis interview_rules.json."""
-    rules_path = Path(__file__).parent / "prompt" / "interview_rules.json"
+def _load_halliday_rules(level_code: str) -> dict:
+    """Charge les règles Halliday spécifiques au niveau depuis ``halliday_rules.json``.
+
+    Chaque niveau (I, O, S) dispose de cinq champs décrivant les contraintes
+    de transitivité grammaticale : ``interview_target``, ``participant_1``,
+    ``process_type``, ``participant_2``, ``proscription``.
+
+    Args:
+        level_code: Code du niveau R6 (``"I"``, ``"O"`` ou ``"S"``).
+
+    Returns:
+        Dictionnaire des cinq champs Halliday pour le niveau demandé.
+
+    Raises:
+        FileNotFoundError: Si ``halliday_rules.json`` est absent du dossier prompt.
+        KeyError: Si ``level_code`` n'est pas présent dans le fichier.
+    """
+    rules_path = Path(__file__).parent / "prompt" / "halliday_rules.json"
     with open(rules_path, encoding="utf-8") as f:
         data = json.load(f)
     return data[level_code]
 
 
-def _load_halliday_spec() -> str:
-    """Charge la spécification Halliday depuis ``R6/Halliday.md``.
+def _load_halliday_context(level_code: str) -> str:
+    """Retourne le contexte Halliday formaté pour injection dans les prompts.
 
-    Ce fichier décrit les règles de transitivité grammaticale (Halliday)
-    appliquées différemment selon le niveau R6 (I, O, S). Il est optionnel :
-    son absence ne bloque pas la génération.
+    Lit les règles de transitivité depuis ``halliday_rules.json`` et les
+    assemble en un bloc texte structuré prêt à être injecté comme
+    ``{halliday_context}`` dans n'importe quel prompt de génération ou
+    d'évaluation.
+
+    Args:
+        level_code: Code du niveau R6 (``"I"``, ``"O"`` ou ``"S"``).
 
     Returns:
-        Contenu brut du fichier Markdown, ou chaîne vide si absent.
+        Bloc texte multi-lignes décrivant les contraintes Halliday du niveau.
     """
-    spec_path = _PROJECT_ROOT / "R6" / "Halliday.md"
-    try:
-        with open(spec_path, encoding="utf-8") as f:
-            return f.read()
-    except FileNotFoundError:
-        return ""
-
-
-_HALLIDAY_LEVEL_MARKER = {
-    "I": "### 2.1.",
-    "O": "### 2.2.",
-    "S": "### 2.3.",
-}
-
-
-def _halliday_context_for_level(spec: str, level_code: str) -> str:
-    """Extrait les règles Halliday pertinentes pour un niveau R6 donné."""
-    if not spec:
-        return "(Halliday specification not available)"
-
-    import re as _re
-
-    parts: list[str] = []
-
-    marker = _HALLIDAY_LEVEL_MARKER.get(level_code, "")
-    if marker:
-        idx = spec.find(marker)
-        if idx != -1:
-            after = spec[idx:]
-            boundary = _re.search(r"\n(?:###|---)", after[1:])
-            if boundary:
-                section = after[: boundary.start() + 1].strip()
-            else:
-                section = after.strip()
-            parts.append(section)
-
-    for line in spec.splitlines():
-        if f"**{level_code} " in line or f"| **{level_code}" in line:
-            parts.append(f"Summary for level {level_code}:\n{line.strip()}")
-            break
-
-    audit_idx = spec.find("## 4.")
-    if audit_idx != -1:
-        after_audit = spec[audit_idx:]
-        next_section = _re.search(r"\n## ", after_audit[1:])
-        if next_section:
-            audit_section = after_audit[: next_section.start() + 1].strip()
-        else:
-            audit_section = after_audit.strip()
-        parts.append(audit_section)
-
-    return "\n\n".join(parts)
+    rules = _load_halliday_rules(level_code)
+    return (
+        f"Interview target: {rules['interview_target']}\n"
+        f"Subject / Participant 1: {rules['participant_1']}\n"
+        f"Process type: {rules['process_type']}\n"
+        f"Object / Participant 2: {rules['participant_2']}\n"
+        f"Proscription: {rules['proscription']}"
+    )
 
 
 def _load_canonical_name(capacity_id: str, lang: str) -> str:

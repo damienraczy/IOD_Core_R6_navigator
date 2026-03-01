@@ -21,14 +21,13 @@ Le verdict agrégé est déterminé par majorité simple ; en cas d'égalité pa
 from __future__ import annotations
 
 import json
-import re
 import threading
 from dataclasses import dataclass
 from pathlib import Path
 
 import yaml
 
-from r6_navigator.services.ai_generate import _load_system_prompt
+from r6_navigator.services.ai_generate import _load_halliday_context, _load_system_prompt
 from r6_navigator.services.prompt import load_prompt
 
 _PACKAGE_DIR = Path(__file__).parent.parent  # r6_navigator/
@@ -212,8 +211,7 @@ def _run_judges(
         for k, v in principles.items()
         if k != "linguistic_differentiation"
     )
-    halliday_spec = _load_halliday_spec()
-    halliday_context = _halliday_context_for_level(halliday_spec, level_code)
+    halliday_context = _load_halliday_context(level_code)
 
     common_vars = dict(
         axioms_context=axioms_context,
@@ -342,85 +340,6 @@ def _load_axioms() -> dict:
     axioms_path = _PACKAGE_DIR / "axioms.yml"
     with open(axioms_path, encoding="utf-8") as f:
         return yaml.safe_load(f)
-
-
-def _load_halliday_spec() -> str:
-    """Charge la spécification Halliday depuis ``R6/Halliday.md``.
-
-    Ce fichier décrit les règles de transitivité grammaticale appliquées
-    différemment selon le niveau R6 (I, O, S). Son absence ne bloque pas
-    l'évaluation.
-
-    Returns:
-        Contenu brut du fichier Markdown, ou chaîne vide si absent.
-    """
-    spec_path = _PROJECT_ROOT / "R6" / "Halliday.md"
-    try:
-        with open(spec_path, encoding="utf-8") as f:
-            return f.read()
-    except FileNotFoundError:
-        return ""
-
-
-# Marqueurs de section par niveau dans Halliday.md
-_HALLIDAY_LEVEL_MARKER = {
-    "I": "### 2.1.",
-    "O": "### 2.2.",
-    "S": "### 2.3.",
-}
-
-
-def _halliday_context_for_level(spec: str, level_code: str) -> str:
-    """Extrait les règles Halliday pertinentes pour un niveau R6 donné.
-
-    Retourne la section 2.x du niveau, la ligne de synthèse correspondante,
-    et les règles d'audit (section 4).
-
-    Args:
-        spec: Contenu brut de Halliday.md.
-        level_code: Code du niveau (``"I"``, ``"O"`` ou ``"S"``).
-
-    Returns:
-        Texte concaténé prêt à être injecté dans le prompt.
-    """
-    if not spec:
-        return "(Halliday specification not available)"
-
-    parts: list[str] = []
-
-    # ---- Section 2.x : règles du niveau ------------------------------------
-    marker = _HALLIDAY_LEVEL_MARKER.get(level_code, "")
-    if marker:
-        idx = spec.find(marker)
-        if idx != -1:
-            after = spec[idx:]
-            # S'arrête au prochain heading ### ou à un séparateur ---
-            boundary = re.search(r"\n(?:###|---)", after[1:])
-            if boundary:
-                section = after[: boundary.start() + 1].strip()
-            else:
-                section = after.strip()
-            parts.append(section)
-
-    # ---- Ligne de synthèse du tableau (section 3) --------------------------
-    for line in spec.splitlines():
-        if f"**{level_code} " in line or f"| **{level_code}" in line:
-            parts.append(f"Synthèse pour le niveau {level_code} :\n{line.strip()}")
-            break
-
-    # ---- Section 4 : règles d'audit ----------------------------------------
-    audit_idx = spec.find("## 4.")
-    if audit_idx != -1:
-        # S'arrête à la fin du fichier ou au prochain ## heading
-        after_audit = spec[audit_idx:]
-        next_section = re.search(r"\n## ", after_audit[1:])
-        if next_section:
-            audit_section = after_audit[: next_section.start() + 1].strip()
-        else:
-            audit_section = after_audit.strip()
-        parts.append(audit_section)
-
-    return "\n\n".join(parts)
 
 
 def _call_ollama(url: str, model: str, system: str, prompt: str, timeout: int) -> str:
