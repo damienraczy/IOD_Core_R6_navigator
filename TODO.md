@@ -1,19 +1,21 @@
 # TODO
 
-Supprimer le "observable" de "capacity_translation" et du premier onglet "fiche".
-Travailler par étapes de génération :
-- générer
-- valider
+Onglet "Question":
+- Pour l'affichage des questions, utiliser un composant de nature analogue à ce qui ets fait pour les "manifestations observables".
+- Harmoniser le look & feel des deux affichages.
+- S'assurer que les widgets se redimensionnent correctement quand on redimensionne la fenetre.
 
-On va décomposer les étapes de génération pour construire la base de manière plus itérative.
-- J'ai créé de nouveaux prompts par duplication des anciens.
-- Il faut enlever ce qui est inutile dans les prompts existants.
-- Il faut créer les traitements sur la base de cest prompts.
-- Il faut mettre à jour les scripts de cli si nécessaire.
+Prompt system
+- Réécrire en anglais le Prompt system
+- Mettre le Prompt system dans un fichier "system_01.txt" localisé dans le répertoire "prompt"
+- Supprimer le Prompt system de "params.yml" une fois "system_01.txt" créé et vérifier.
 
-Nouvelles étapes du traitement
-  - générer l'information générale : `capacity_translation.label` `capacity_translation.definition` `capacity_translation.central_function` (prompt : generate_fiche.txt)
-  - générer les risques pour l'organisation `capacity_translation.risk_insufficient` `capacity_translation.risk_excessive` (prompt : generate_fiche_risques.txt)
-  - générer les `questions_translations` et les observables `observable_item_translation` (prompt : generate_questions.txt)
-  - générer les items (prompt : generate_questions_items.txt)
-  - générer les coaching :  `coaching_translation` (prompt : generate_coaching.txt)
+dossier `i18n`
+- Il y a deux dossier `i18n`
+- Ne garder que le dossier `i18n` utilisé, supprimer l'autre.
+- Si les deux dossiers `i18n` sont utilisés, fusionner, et ne garder que le dossier `i18n` situé dans `r6_navigator`
+
+Commente en détail
+- r6_navigator/services/ai_judge.py
+- r6_navigator/services/ai_generate.py
+- r6_navigator/services/ai_judge.py

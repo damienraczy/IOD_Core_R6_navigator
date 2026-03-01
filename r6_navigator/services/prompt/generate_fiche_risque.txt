@@ -14,15 +14,17 @@ Apply the rules above to every sentence you generate. Never omit the subject. Th
 === FIELD SPECIFICATIONS ===
 
 risk_insufficient: 5 sentences describing observable signs of DEFICIT — the capacity is absent, underdeveloped, or chronically avoided, causing measurable dysfunction.
-- Each sentence MUST use the level-appropriate explicit subject
+- Each sentence MUST SUPPOSE the level-appropriate explicit subject (participant_1), even there is subject ellipsis
 - Each sentence MUST use the correct Halliday process type for level {level_code}
 - Each sentence must be less than 20 words
+- Subject (participant_1) ellipsis
 - Format: bullet list `- Sentence.\n`
 
 risk_excessive: 5 sentences describing observable signs of PATHOLOGICAL OVERUSE — the capacity is overactivated, rigid, compulsive, or deployed so far beyond its useful range that it creates dysfunction (over-control, rigidity, systemic imbalance). This is NOT about high performance or surpassing expectations; it describes a dysfunctional extreme.
-- Each sentence MUST use the level-appropriate explicit subject
+- Each sentence MUST SUPPOSE the level-appropriate explicit subject (participant_1), even there is subject ellipsis
 - Each sentence MUST use the correct Halliday process type for level {level_code}
 - Each sentence must be less than 20 words
+- Subject (participant_1) ellipsis
 - Format: bullet list `- Sentence.\n`
 
 === OUTPUT ===
