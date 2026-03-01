@@ -199,6 +199,28 @@ def generate_fiche_risque(capacity_id: str, lang: str) -> GeneratedRisque:
 
     halliday_context = _load_halliday_context(level_code)
 
+    # Relational context: twin pole, enables (N+1), emerges_from (N-1).
+    # Derived from axioms; edge cases: I has no emerges_from, S has no enables.
+    capacities_map = ontology["capacities"]
+    cap_data = capacities_map[capacity_id]
+    twin_pole = "b" if pole_code == "a" else "a"
+    twin_id = f"{level_code}{axis_number}{twin_pole}"
+    twin_name = _load_canonical_name(twin_id, lang)
+    relational_lines = [
+        f"Twin pole (same axis {axis_number}, opposite pole): {twin_id} — {twin_name}",
+    ]
+    enables_id = cap_data.get("enables")
+    if enables_id:
+        enables_name = _load_canonical_name(enables_id, lang)
+        relational_lines.append(f"Enables (level above): {enables_id} — {enables_name}")
+    emerges_from_id = cap_data.get("emerges_from")
+    if emerges_from_id:
+        emerges_from_name = _load_canonical_name(emerges_from_id, lang)
+        relational_lines.append(
+            f"Emerges from (level below): {emerges_from_id} — {emerges_from_name}"
+        )
+    relational_context = "\n".join(relational_lines)
+
     lang_name = "French" if lang == "fr" else "US English"
     user_prompt = load_prompt(
         "generate_fiche_risque",
@@ -212,6 +234,7 @@ def generate_fiche_risque(capacity_id: str, lang: str) -> GeneratedRisque:
         pole_code=pole_code,
         canonical_name=canonical_name,
         halliday_context=halliday_context,
+        relational_context=relational_context,
     )
 
     raw = _call_ollama(url, model, system_prompt, user_prompt, timeout)

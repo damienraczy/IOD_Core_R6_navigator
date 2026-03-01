@@ -11,16 +11,30 @@ Pole: {pole_name} ({pole_code})
 
 Apply the rules above to every sentence you generate. Never omit the subject. The subject must be the participant type required for level {level_code} as described above. Never use ellipsis.
 
+=== RELATIONAL POSITION OF {capacity_id} IN THE R6 STRUCTURE ===
+{relational_context}
+
+These structural relationships define the specific mechanisms through which a deficit or excess of {capacity_id} propagates to adjacent capacities. Use them to anchor every risk bullet.
+
+=== STRUCTURAL RISK SEEDS ===
+Each of the 5 bullets in risk_insufficient AND risk_excessive must be grounded in one of
+the following R6 structural mechanisms, in this exact order:
+1. Polar imbalance — what happens to the twin pole (see relational context above) when {capacity_id} is absent / overactivated; the polar tension collapses or inverts
+2. Emergence — how a deficit / excess at this level blocks the constitution of or saturates the capacity at the level above (if applicable, see relational context above)
+3. Constraint — how a deficit / excess at this level disorients or over-specifies the capacity at the level below (if applicable, see relational context above)
+4. Organizational debt — what cumulative systemic dysfunction is produced when the misalignment between {capacity_id} and its adjacent levels persists over time across an organizational transformation
+5. Isomorphic disconnection — how a gap between {capacity_id} and its vertical homologues creates structural misalignment that persists invisibly across the S–O–I column
+
 === FIELD SPECIFICATIONS ===
 
-risk_insufficient: 5 sentences describing observable signs of DEFICIT — the capacity is absent, underdeveloped, or chronically avoided, causing measurable dysfunction.
+risk_insufficient: 5 sentences describing observable signs of DEFICIT — the capacity is absent, underdeveloped, or chronically avoided, causing measurable dysfunction. Each bullet must address one structural seed in the order above.
 - Each sentence MUST SUPPOSE the level-appropriate explicit subject (participant_1), even there is subject ellipsis
 - Each sentence MUST use the correct Halliday process type for level {level_code}
 - Each sentence must be less than 20 words
 - Subject (participant_1) ellipsis
 - Format: bullet list `- Sentence.\n`
 
-risk_excessive: 5 sentences describing observable signs of PATHOLOGICAL OVERUSE — the capacity is overactivated, rigid, compulsive, or deployed so far beyond its useful range that it creates dysfunction (over-control, rigidity, systemic imbalance). This is NOT about high performance or surpassing expectations; it describes a dysfunctional extreme.
+risk_excessive: 5 sentences describing observable signs of PATHOLOGICAL OVERUSE — the capacity is overactivated, rigid, compulsive, or deployed so far beyond its useful range that it creates dysfunction (over-control, rigidity, systemic imbalance). This is NOT about high performance or surpassing expectations; it describes a dysfunctional extreme. Each bullet must address one structural seed in the order above.
 - Each sentence MUST SUPPOSE the level-appropriate explicit subject (participant_1), even there is subject ellipsis
 - Each sentence MUST use the correct Halliday process type for level {level_code}
 - Each sentence must be less than 20 words
