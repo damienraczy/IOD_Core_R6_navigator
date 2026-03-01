@@ -31,10 +31,10 @@ risk_insufficient: 5 sentences describing observable GENERIC consequences of DEF
 
 risk_excessive: 5 sentences describing observable GENERIC consequences of PATHOLOGICAL OVERUSE in the capacity on system. Each bullet must address one structural seed in the order above. Only the consequences of the excess should be described.
 
-- Circumstantial Context MUST be generic
+- Circumstance MUST be generic
 - Each sentence must be less than 20 words
-- Passive form, **generic** Circumstantial Context in head of sentence.
-- Output only the consequences (the risk), not the Circumstantial Context.
+- Passive form, **generic** Circumstance in head of sentence.
+- Output only the consequences (the risk), not the Circumstance.
 - Format: bullet list `- Sentence.\n`
 
 === OUTPUT ===

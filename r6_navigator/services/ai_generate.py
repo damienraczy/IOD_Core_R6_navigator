@@ -736,16 +736,16 @@ def _load_halliday_context(level_code: str) -> str:
     """
     rules = _load_halliday_rules(level_code)
     lines = [
-        f"Interview target: {rules['interview_target']}",
-        f"Subject / Participant 1: {rules['participant_1']}",
-        f"Process type: {rules['process_type']}",
-        f"Object / Participant 2: {rules['participant_2']}",
-        f"Circumstance: {rules['circumstance']}",
-        f"Proscription: {rules['proscription']}",
-        f"Audit rule (main clause): {rules['audit_rule_main_clause']}",
+        f"Analysis Target: {rules['interview_target']}",
+        f"Primary Participant (Role 1): {rules['participant_1']}",
+        f"Process Type: {rules['process_type']}",
+        f"Secondary Participant (Role 2): {rules['participant_2']}",
+        f"Circumstantial Context: {rules['circumstance']}",
+        f"Proscription/Constraints: {rules['proscription']}",
+        f"Audit Rule: {rules['audit_rule_main_clause']}",
     ]
     if "audit_rule_inversion" in rules:
-        lines.append(f"Audit rule (inversion test): {rules['audit_rule_inversion']}")
+        lines.append(f"Audit Rule (inversion test): {rules['audit_rule_inversion']}")
     ret = "\n".join(lines)
     # print(ret)
     return ret

@@ -6,19 +6,19 @@ Capacity: {canonical_name} (ID: {capacity_id})
 Level: {level_name} ({level_code}) | Axis: {axis_name} ({axis_number}) | Pole: {pole_name} ({pole_code})
 
 === INTERVIEW QUESTIONS — LEVEL {level_code} RULES ===
-Analysis Target: {interview_target}
-Primary Participant (Role 1): {participant_1}
-Process Type: {process_type}
-Secondary Participant (Role 2): {participant_2}
-Circumstantial Context: {circumstance}
-Proscription/Constraints: {proscription}
+Interview Target: {interview_target}
+Mandatory Primary Participant (Subject): {participant_1}
+Mandatory Process Type (Verb): {process_type}
+Optional Secondary Participant (Object/Attribute): {participant_2}
+Circumstance (Time, Place, Manner or equivalent for this level): {circumstance}
+Strict Proscription: {proscription}
 
 Generate 10 open-ended interview questions targeting capacity {capacity_id} (axis: {axis_name}, pole: {pole_name}).
 Questions must:
-- Be fully consistent with the Analysis Target, Primary Participant (Role 1), and Process Type defined above
+- Be fully consistent with the Interview Target, Primary Participant, and Process Type defined above
 - Target past concrete episodes, decisions, or mechanisms — never hypothetical situations
 - Be open-ended and specific enough to generate rich, evaluable answers
-- Strictly respect the Proscription/Constraints above
+- Strictly respect the Proscription above
 
 === THEMATIC SEEDS FOR QUESTIONS ===
 Each question MUST be built around one of the following 10 universal situational seeds, in this exact order:
@@ -36,7 +36,7 @@ Constraint: Translate the seed into natural, conversational HR interview languag
 
 === QUESTIONS TONE AND STYLE ===
 Natural, conversational, and accessible business language. The interview questions must sound like a real manager or HR professional speaking naturally in a standard interview. DO NOT use theoretical, academic, or linguistic jargon in the generated text. Keep the vocabulary grounded in daily business reality.
-Role 1 ellipsis (leave it implicit).
+Subject ellipsis (leave it implicit).
 
 === OUTPUT ===
 Return ONLY a valid JSON object. No markdown fences, no preamble, no trailing text.
