@@ -75,22 +75,38 @@ class _GenerateRisqueWorker(QThread):
     finished = Signal(object)   # GeneratedRisque
     error = Signal(str)
 
-    def __init__(self, capacity_id: str, lang: str) -> None:
+    def __init__(
+        self,
+        capacity_id: str,
+        lang: str,
+        definition: str = "",
+        central_function: str = "",
+    ) -> None:
         """Initialise le worker avec les paramètres de la requête.
 
         Args:
             capacity_id: Identifiant de la capacité à générer (ex. ``"S1a"``).
             lang: Code langue de génération (``"fr"`` ou ``"en"``).
+            definition: Texte de définition déjà généré, transmis au LLM pour
+                ancrer les risques dans la nature spécifique de la capacité.
+            central_function: Texte de fonction centrale déjà généré, même usage.
         """
         super().__init__()
         self._capacity_id = capacity_id
         self._lang = lang
+        self._definition = definition
+        self._central_function = central_function
 
     def run(self) -> None:
         """Exécute l'appel Ollama dans le thread de fond."""
         try:
             from r6_navigator.services.ai_generate import generate_fiche_risque
-            content = generate_fiche_risque(self._capacity_id, self._lang)
+            content = generate_fiche_risque(
+                self._capacity_id,
+                self._lang,
+                definition=self._definition,
+                central_function=self._central_function,
+            )
             self.finished.emit(content)
         except Exception as exc:
             self.error.emit(str(exc))
@@ -426,7 +442,10 @@ class TabFiche(QWidget, Ui_TabFiche):
             return
         self.btn_generer_risque.setEnabled(False)
         self._risque_worker = _GenerateRisqueWorker(
-            self._current_capacity.capacity_id, current_lang()
+            self._current_capacity.capacity_id,
+            current_lang(),
+            definition=self.text_definition.toPlainText(),
+            central_function=self.text_central_function.toPlainText(),
         )
         self._risque_worker.finished.connect(self._on_generate_risque_done)
         self._risque_worker.error.connect(self._on_generate_risque_error)

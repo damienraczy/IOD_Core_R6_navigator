@@ -15,7 +15,7 @@ Apply the rules above to every sentence you generate. Never omit the subject. Th
 {relational_context}
 
 These structural relationships define the specific mechanisms through which a deficit or excess of {capacity_id} propagates to adjacent capacities. Use them to anchor every risk bullet.
-{capacity_content}
+
 === STRUCTURAL RISK SEEDS ===
 Each of the 5 bullets in risk_insufficient AND risk_excessive must be grounded in one of the following R6 structural mechanisms, in this exact order:
 1. Polar imbalance — what happens to the twin pole (see relational context above) when {capacity_id} is absent / overactivated; the polar tension collapses or inverts

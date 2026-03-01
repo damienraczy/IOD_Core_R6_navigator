@@ -165,12 +165,22 @@ def generate_fiche(capacity_id: str, lang: str) -> GeneratedFiche:
     return _parse_fiche_response(raw, capacity_id)
 
 
-def generate_fiche_risque(capacity_id: str, lang: str) -> GeneratedRisque:
+def generate_fiche_risque(
+    capacity_id: str,
+    lang: str,
+    definition: str = "",
+    central_function: str = "",
+) -> GeneratedRisque:
     """Calls Ollama to generate risk_insufficient and risk_excessive for one capacity.
 
     Args:
         capacity_id: e.g. "I1a"
         lang: active UI language ("fr" or "en"); model responds in this language.
+        definition: Already-generated definition text for this capacity (optional).
+            When provided, injected into the prompt to ground the risks in the
+            specific nature of the capacity rather than a generic level description.
+        central_function: Already-generated central_function text (optional).
+            Same purpose as definition.
 
     Returns:
         GeneratedRisque populated from the JSON response.
@@ -221,6 +231,19 @@ def generate_fiche_risque(capacity_id: str, lang: str) -> GeneratedRisque:
         )
     relational_context = "\n".join(relational_lines)
 
+    # Optional capacity content block: inject definition and central_function when
+    # available so the LLM grounds risks in the specific capacity, not generic level.
+    capacity_content_lines: list[str] = []
+    if definition.strip() or central_function.strip():
+        capacity_content_lines.append(
+            "\n=== CAPACITY CONTENT (already generated — use to ground risk bullets) ==="
+        )
+        if definition.strip():
+            capacity_content_lines.append(f"Definition:\n{definition.strip()}")
+        if central_function.strip():
+            capacity_content_lines.append(f"Central function:\n{central_function.strip()}")
+    capacity_content = "\n\n".join(capacity_content_lines)
+
     lang_name = "French" if lang == "fr" else "US English"
     user_prompt = load_prompt(
         "generate_fiche_risque",
@@ -235,6 +258,7 @@ def generate_fiche_risque(capacity_id: str, lang: str) -> GeneratedRisque:
         canonical_name=canonical_name,
         halliday_context=halliday_context,
         relational_context=relational_context,
+        capacity_content=capacity_content,
     )
 
     raw = _call_ollama(url, model, system_prompt, user_prompt, timeout)

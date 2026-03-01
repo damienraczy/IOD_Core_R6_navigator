@@ -131,7 +131,16 @@ def populate_risque(
     if not full and not _risque_is_missing(session_factory, capacity_id, lang):
         return False
 
-    content = generate_fiche_risque(capacity_id, lang)
+    with session_factory() as session:
+        trans = crud.get_capacity_translation(session, capacity_id, lang)
+    definition = (trans.definition or "") if trans else ""
+    central_function = (trans.central_function or "") if trans else ""
+
+    content = generate_fiche_risque(
+        capacity_id, lang,
+        definition=definition,
+        central_function=central_function,
+    )
 
     with session_factory() as session:
         crud.upsert_capacity_translation(
