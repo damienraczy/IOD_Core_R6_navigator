@@ -1,7 +1,7 @@
 {
   "_comment": "Level-specific Halliday transitivity rules for R6 generation and evaluation. v3: integrated ellipsis recovery and multi-level inversion tests; fixed JSON syntax.",
   "I": {
-    "interview_target": "Conduct interviews about concrete situations they have personally experienced and acted upon. Target the interviewee's own direct actions and observable behaviours in specific past episodes. Avoid hypothetical or systemic questions.",
+    "interview_target": "Conduct interviews with various level staff (operation, management, executive) about concrete situations they have personally experienced and acted upon. Target the interviewee's own direct actions and observable behaviours in specific past episodes. Avoid hypothetical or systemic questions.",
     "participant_1": "Actor (a physical individual, a collaborator, a manager, an executive, the 'you' of the interview — someone with a body capable of performing the verb)",
     "process_type": "Material (e.g. produce, write, repair, build, deliver) or Behavioural (e.g. listen, observe, interact, respond)",
     "participant_2": "Optional Goal (the concrete entity on which the action operates, e.g. a report, a client, a task, a decision)",
@@ -10,7 +10,7 @@
     "audit_rule_main_clause": "Syntactic analysis strictly applies to the main grammatical clause. If Participant 1 is elided (ellipsis), its identity must be recovered from the context: it must be a physical individual for the statement to remain valid for Level I. Do not reject sentences where the subject is implicit but clearly physical."
   },
   "O": {
-    "interview_target": "Conduct interviews about coordination mechanisms, collective routines, and the actual functioning of processes and systems. Ask about systemic episodes — how the system responds, what the routine produces, what breaks when the mechanism fails.",
+    "interview_target": "Conduct interviews with managers and team leaders about coordination mechanisms, collective routines, and the actual functioning of processes and systems. Ask about systemic episodes — how the system responds, what the routine produces, what breaks when the mechanism fails.",
     "participant_1": "Carrier or Abstract Actor (the system, the organisation, the process, the managerial ritual, the tool, the committee as an institutional instance). A named group of humans (e.g. 'managers', 'the team') is invalid.",
     "process_type": "Relational-attributive (e.g. be structured, become predictable, remain aligned) or Abstract Material (e.g. consolidate, coordinate, generate, regulate, standardise)",
     "participant_2": "Optional Attribute (the characteristic assigned to the carrier) or Abstract Goal (the systemic output)",
