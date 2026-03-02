@@ -56,11 +56,16 @@ IOD_R6_base_v2/
 │   ├── translate_db.py  # AI-translate DB content (fr ↔ en)
 │   └── compile_ui.py    # Compile .ui → ui_*.py
 └── r6_navigator/
-    ├── db/              # Database layer (models, engine)
-    ├── services/        # Business logic (CRUD, export, backup)
-    ├── ui/qt/           # PySide6 UI
+    ├── db/              # Database layer (models, engine, migrations)
+    ├── shared/          # Shared utilities (backup, Ollama HTTP client)
+    ├── navigator/       # R6 referential sub-app (CRUD, export, AI generation)
+    │   ├── services/    # Business logic + prompts
+    │   └── ui/          # PySide6 UI (main window, tabs, forms)
+    ├── missions/        # Mission interpretation sub-app (verbatim analysis)
+    │   ├── services/    # Business logic + prompts
+    │   └── ui/          # PySide6 UI (mission window, tabs)
     ├── i18n/            # Internationalization (fr/en)
-    ├── tests/           # pytest tests
+    ├── tests/           # pytest tests (navigator/ + missions/)
     └── main.py          # Entry point
 ```
 

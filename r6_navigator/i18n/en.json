@@ -125,5 +125,57 @@
   "error.restore": "Restore error: {message}",
   "error.required_field": "This field is required.",
 
-  "validation.label_fr_required": "Label (fr) is required."
+  "validation.label_fr_required": "Label (fr) is required.",
+
+  "btn.missions": "Missions",
+
+  "mission.window_title": "R6 Navigator — Missions",
+  "mission.tab_info": "Mission",
+  "mission.tab_verbatim": "Verbatim",
+  "mission.tab_interpretations": "Interpretations",
+  "mission.tab_rapport": "Report",
+
+  "mission.client_name": "Client",
+  "mission.status": "Status",
+  "mission.description": "Description",
+  "mission.stats_title": "Statistics",
+  "mission.nb_interviews": "Interviews",
+  "mission.nb_verbatims": "Verbatims",
+  "mission.nb_interpretations": "Interpretations",
+
+  "mission.verbatim_title": "Title",
+  "mission.verbatim_status": "Status",
+  "mission.raw_text": "Raw text",
+  "mission.btn_analyze": "Analyze",
+  "mission.analyzing": "Analysis in progress…",
+  "mission.analyze_done_title": "Analysis complete",
+  "mission.analyze_done_msg": "{n} extract(s) identified.",
+
+  "mission.btn_generate_report": "Generate report",
+  "mission.generating_report": "Generating report…",
+  "mission.report_status": "Status: {status}",
+  "mission.no_report": "No report generated yet.",
+
+  "mission.col_extract": "Extract",
+  "mission.col_capacity": "Capacity",
+  "mission.col_score": "Score",
+  "mission.col_direction": "Direction",
+  "mission.col_justification": "Justification",
+  "mission.interp_stats": "{total} interpretation(s) — {validated} validated, {rejected} rejected",
+
+  "mission.btn_validate": "Validate",
+  "mission.btn_reject": "Reject",
+  "mission.btn_correct": "Correct",
+  "mission.correct_title": "Correct interpretation",
+
+  "mission.btn_new_mission": "New mission",
+  "mission.btn_new_interview": "New interview",
+  "mission.btn_import_verbatim": "Import verbatim",
+  "mission.import_verbatim": "Import verbatim (.txt)",
+  "mission.new_mission_title": "New mission",
+  "mission.new_interview_title": "New interview",
+  "mission.interviewee_name": "Interviewee name",
+  "mission.select_interview": "Select interview",
+  "mission.no_mission_selected": "No mission selected. Create or select a mission first.",
+  "mission.no_interview_for_mission": "No interviews for this mission. Create an interview first."
 }

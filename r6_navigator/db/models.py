@@ -231,3 +231,137 @@ class CoachingTranslation(Base):
     recommended_missions: Mapped[str | None] = mapped_column(Text)
 
     coaching: Mapped[Coaching] = relationship(back_populates="translations")
+
+
+# ---------------------------------------------------------------------------
+# Mission module entities
+# ---------------------------------------------------------------------------
+
+class Mission(Base):
+    __tablename__ = "mission"
+
+    mission_id: Mapped[str] = mapped_column(String, primary_key=True)
+    client_name: Mapped[str] = mapped_column(Text, nullable=False)
+    description: Mapped[str | None] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String, nullable=False, default="active")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, default=lambda: datetime.now(timezone.utc)
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+    interviews: Mapped[list[Interview]] = relationship(
+        back_populates="mission", cascade="all, delete-orphan"
+    )
+    reports: Mapped[list[MissionReport]] = relationship(
+        back_populates="mission", cascade="all, delete-orphan"
+    )
+
+
+class Interview(Base):
+    __tablename__ = "interview"
+
+    interview_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    mission_id: Mapped[str] = mapped_column(
+        String, ForeignKey("mission.mission_id", ondelete="CASCADE"), nullable=False
+    )
+    interviewee_name: Mapped[str] = mapped_column(Text, nullable=False)
+    interviewee_role: Mapped[str | None] = mapped_column(Text)
+    interviewee_level: Mapped[str | None] = mapped_column(String)
+    interview_date: Mapped[str | None] = mapped_column(Text)
+    notes: Mapped[str | None] = mapped_column(Text)
+
+    mission: Mapped[Mission] = relationship(back_populates="interviews")
+    verbatims: Mapped[list[Verbatim]] = relationship(
+        back_populates="interview", cascade="all, delete-orphan"
+    )
+
+
+class Verbatim(Base):
+    __tablename__ = "verbatim"
+
+    verbatim_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    interview_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("interview.interview_id", ondelete="CASCADE"), nullable=False
+    )
+    title: Mapped[str | None] = mapped_column(Text)
+    raw_text: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    source_file: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, default=lambda: datetime.now(timezone.utc)
+    )
+    status: Mapped[str] = mapped_column(String, nullable=False, default="pending")
+
+    interview: Mapped[Interview] = relationship(back_populates="verbatims")
+    extracts: Mapped[list[Extract]] = relationship(
+        back_populates="verbatim", cascade="all, delete-orphan"
+    )
+
+
+class Extract(Base):
+    __tablename__ = "extract"
+
+    extract_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    verbatim_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("verbatim.verbatim_id", ondelete="CASCADE"), nullable=False
+    )
+    raw_text: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    created_by: Mapped[str] = mapped_column(String, nullable=False, default="AI")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, default=lambda: datetime.now(timezone.utc)
+    )
+
+    verbatim: Mapped[Verbatim] = relationship(back_populates="extracts")
+    interpretations: Mapped[list[Interpretation]] = relationship(
+        back_populates="extract", cascade="all, delete-orphan"
+    )
+
+
+class Interpretation(Base):
+    __tablename__ = "interpretation"
+
+    interpretation_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    extract_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("extract.extract_id", ondelete="CASCADE"), nullable=False
+    )
+    capacity_id: Mapped[str | None] = mapped_column(
+        String, ForeignKey("capacity.capacity_id"), nullable=True
+    )
+    maturity_score: Mapped[int | None] = mapped_column(Integer)
+    direction: Mapped[str | None] = mapped_column(String)
+    justification: Mapped[str | None] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String, nullable=False, default="pending")
+    corrected_capacity_id: Mapped[str | None] = mapped_column(
+        String, ForeignKey("capacity.capacity_id"), nullable=True
+    )
+    corrected_maturity_score: Mapped[int | None] = mapped_column(Integer)
+    corrected_direction: Mapped[str | None] = mapped_column(String)
+    corrected_justification: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, default=lambda: datetime.now(timezone.utc)
+    )
+    validated_at: Mapped[datetime | None] = mapped_column(DateTime)
+
+    extract: Mapped[Extract] = relationship(back_populates="interpretations")
+    capacity: Mapped[Capacity | None] = relationship(foreign_keys=[capacity_id])
+    corrected_capacity: Mapped[Capacity | None] = relationship(foreign_keys=[corrected_capacity_id])
+
+
+class MissionReport(Base):
+    __tablename__ = "mission_report"
+
+    report_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    mission_id: Mapped[str] = mapped_column(
+        String, ForeignKey("mission.mission_id", ondelete="CASCADE"), nullable=False
+    )
+    content: Mapped[str | None] = mapped_column(Text)
+    generated_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, default=lambda: datetime.now(timezone.utc)
+    )
+    status: Mapped[str] = mapped_column(String, nullable=False, default="draft")
+
+    mission: Mapped[Mission] = relationship(back_populates="reports")
