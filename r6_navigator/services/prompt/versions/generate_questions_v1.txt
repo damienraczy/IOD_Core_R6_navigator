@@ -1,0 +1,18 @@
+Generate professional R6 interview questions and observable manifestations for the following capacity.
+Respond in {lang_name}.
+
+Capacity ID: {capacity_id}
+Level: {level_name} ({level_code})
+Axis: {axis_name} ({axis_number})
+Pole: {pole_name} ({pole_code})
+Canonical name: {canonical_name}
+
+Return a JSON object with exactly these keys:
+  questions: a list of 10 STAR-method interview questions (strings)
+  observable_items: an object with exactly these 4 keys, each containing a list of 5 observable behavioral manifestations (strings):
+    OK  — adequate, fully functional manifestations
+    DEP — manifestations that exceed the norm / overperform
+    EXC — excessive, overdone manifestations
+    INS — insufficient, deficit manifestations
+
+Each string must comply with Halliday's transitivity rules for the level ({level_code}), be less than 20 words, and use ellipsis of the subject.

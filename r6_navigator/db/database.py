@@ -49,7 +49,6 @@ def init_db(engine: Engine, seed_capacities: bool = True) -> None:
     Base.metadata.create_all(engine)
     _migrate_to_translation_tables(engine)
     _migrate_drop_observable_column(engine)
-    _migrate_add_mission_tables(engine)
     _seed_reference_data(engine)
     if seed_capacities:
         _seed_capacities(engine)
@@ -161,25 +160,6 @@ def _migrate_drop_observable_column(engine: Engine) -> None:
         raise
     finally:
         raw.close()
-
-
-# ---------------------------------------------------------------------------
-# Migration — add mission module tables
-# ---------------------------------------------------------------------------
-
-def _migrate_add_mission_tables(engine: Engine) -> None:
-    """Creates mission module tables if they don't exist yet. No-op on fresh DB or already migrated."""
-    with engine.connect() as conn:
-        tables = conn.execute(text("SELECT name FROM sqlite_master WHERE type='table'")).fetchall()
-        existing = {r[0] for r in tables}
-        if "mission" in existing:
-            return  # Already present — nothing to do
-
-    # Tables are created by Base.metadata.create_all() which already ran.
-    # This migration guard is only needed for databases created before the mission module.
-    # On a fresh DB, create_all() has already handled everything.
-    # For existing DBs without the tables, create_all() is idempotent and will add them.
-    # So this function serves as a no-op guard; create_all() does the real work.
 
 
 # ---------------------------------------------------------------------------

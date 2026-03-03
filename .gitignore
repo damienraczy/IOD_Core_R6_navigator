@@ -21,6 +21,9 @@ env/
 *.db-shm
 *.db-wal
 
+# Archives
+*.zip
+
 # Pytest
 .pytest_cache/
 

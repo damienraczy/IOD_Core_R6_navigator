@@ -32,8 +32,8 @@ if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
 from r6_navigator.db.database import get_engine, get_session_factory, init_db
-from r6_navigator.navigator.services import crud
-from r6_navigator.navigator.services.ai_generate import (
+from r6_navigator.services import crud
+from r6_navigator.services.ai_generate import (
     translate_coaching,
     translate_fiche,
     translate_observable_items,

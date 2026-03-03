@@ -125,57 +125,5 @@
   "error.restore": "Erreur lors de la restauration : {message}",
   "error.required_field": "Ce champ est obligatoire.",
 
-  "validation.label_fr_required": "L'intitulé (fr) est obligatoire.",
-
-  "btn.missions": "Missions",
-
-  "mission.window_title": "R6 Navigator — Missions",
-  "mission.tab_info": "Mission",
-  "mission.tab_verbatim": "Verbatim",
-  "mission.tab_interpretations": "Interprétations",
-  "mission.tab_rapport": "Rapport",
-
-  "mission.client_name": "Client",
-  "mission.status": "Statut",
-  "mission.description": "Description",
-  "mission.stats_title": "Statistiques",
-  "mission.nb_interviews": "Entretiens",
-  "mission.nb_verbatims": "Verbatims",
-  "mission.nb_interpretations": "Interprétations",
-
-  "mission.verbatim_title": "Titre",
-  "mission.verbatim_status": "Statut",
-  "mission.raw_text": "Texte brut",
-  "mission.btn_analyze": "Analyser",
-  "mission.analyzing": "Analyse en cours…",
-  "mission.analyze_done_title": "Analyse terminée",
-  "mission.analyze_done_msg": "{n} extrait(s) identifié(s).",
-
-  "mission.btn_generate_report": "Générer rapport",
-  "mission.generating_report": "Génération du rapport en cours…",
-  "mission.report_status": "Statut : {status}",
-  "mission.no_report": "Aucun rapport généré.",
-
-  "mission.col_extract": "Extrait",
-  "mission.col_capacity": "Capacité",
-  "mission.col_score": "Score",
-  "mission.col_direction": "Direction",
-  "mission.col_justification": "Justification",
-  "mission.interp_stats": "{total} interprétation(s) — {validated} validée(s), {rejected} rejetée(s)",
-
-  "mission.btn_validate": "Valider",
-  "mission.btn_reject": "Rejeter",
-  "mission.btn_correct": "Corriger",
-  "mission.correct_title": "Corriger l'interprétation",
-
-  "mission.btn_new_mission": "Nouvelle mission",
-  "mission.btn_new_interview": "Nouvel entretien",
-  "mission.btn_import_verbatim": "Importer verbatim",
-  "mission.import_verbatim": "Importer un verbatim (.txt)",
-  "mission.new_mission_title": "Nouvelle mission",
-  "mission.new_interview_title": "Nouvel entretien",
-  "mission.interviewee_name": "Nom de l'interviewé",
-  "mission.select_interview": "Sélectionner l'entretien",
-  "mission.no_mission_selected": "Aucune mission sélectionnée. Créez ou sélectionnez une mission d'abord.",
-  "mission.no_interview_for_mission": "Aucun entretien pour cette mission. Créez un entretien d'abord."
+  "validation.label_fr_required": "L'intitulé (fr) est obligatoire."
 }

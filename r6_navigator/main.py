@@ -6,7 +6,7 @@ from pathlib import Path
 from PySide6.QtWidgets import QApplication
 
 from r6_navigator.db.database import get_engine, get_session_factory, init_db
-from r6_navigator.navigator.ui.app import R6NavigatorApp
+from r6_navigator.ui.qt.app import R6NavigatorApp
 
 _DB_PATH = Path(__file__).parent.parent / "r6_navigator.db"
 
