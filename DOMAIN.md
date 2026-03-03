@@ -232,3 +232,107 @@ The UI displays a sibling bar above the detail panel:
 ```
 Each code is clickable and loads the sibling capacity.
 This is a computed UI feature — no stored relation in the DB.
+
+---
+
+## Mission entities
+
+These entities support the diagnostic mission workflow: interviewing subjects,
+analysing verbatim transcripts with AI, and producing R6 diagnostic reports.
+
+### Cascade delete chain
+
+```
+Mission → Interview → Verbatim → Extract → Interpretation
+Mission → MissionReport
+```
+
+All child records are deleted when the parent is deleted
+(SQLAlchemy `cascade="all, delete-orphan"`).
+
+### Mission
+
+| Field        | Type     | Notes                      |
+|--------------|----------|----------------------------|
+| `id`         | INT PK   | Autoincrement              |
+| `name`       | TEXT     | Required                   |
+| `client`     | TEXT     |                            |
+| `consultant` | TEXT     |                            |
+| `start_date` | TEXT     | ISO date string (optional) |
+| `objective`  | TEXT     |                            |
+| `created_at` | DATETIME |                            |
+
+### Interview
+
+One interview per subject within a mission.
+
+| Field            | Type    | Notes                                        |
+|------------------|---------|----------------------------------------------|
+| `id`             | INT PK  | Autoincrement                                |
+| `mission_id`     | INT FK  | → mission, CASCADE                           |
+| `subject_name`   | TEXT    |                                              |
+| `subject_role`   | TEXT    |                                              |
+| `interview_date` | TEXT    | ISO date string (optional)                   |
+| `level_code`     | TEXT    | `'S'` \| `'O'` \| `'I'` — R6 analysis level |
+| `notes`          | TEXT    |                                              |
+
+### Verbatim
+
+Raw transcript of an interview. One verbatim per interview (created automatically
+on interview load; updated in place by the UI verbatim editor).
+
+| Field          | Type     | Notes                |
+|----------------|----------|----------------------|
+| `id`           | INT PK   | Autoincrement        |
+| `interview_id` | INT FK   | → interview, CASCADE |
+| `text`         | TEXT     | Full verbatim text   |
+| `created_at`   | DATETIME |                      |
+
+### Extract
+
+A significant passage extracted from the verbatim, proposed by AI analysis
+or entered manually.
+
+| Field           | Type | Notes                            |
+|-----------------|------|----------------------------------|
+| `id`            | INT PK | Autoincrement                  |
+| `verbatim_id`   | INT FK | → verbatim, CASCADE            |
+| `text`          | TEXT   | Extracted passage              |
+| `tag`           | TEXT   | R6 capacity code (e.g. `"I3b"`) |
+| `display_order` | INT    | Ordering within the verbatim   |
+
+### Interpretation
+
+AI-generated interpretation of an extract, to be reviewed and validated
+by the consultant.
+
+| Field            | Type    | Notes                                                          |
+|------------------|---------|----------------------------------------------------------------|
+| `id`             | INT PK  | Autoincrement                                                  |
+| `extract_id`     | INT FK  | → extract, CASCADE                                             |
+| `capacity_id`    | TEXT FK | → capacity.capacity_id (nullable — may not map to a capacity) |
+| `maturity_level` | TEXT    | e.g. `"insuffisant"`, `"satisfaisant"`, `"excellent"`          |
+| `confidence`     | FLOAT   | 0.0 – 1.0, model confidence score                             |
+| `text`           | TEXT    | Analyst interpretation text (2–4 sentences)                    |
+| `status`         | TEXT    | See status enum below                                          |
+
+Status enum: `"pending"` | `"validated"` | `"rejected"` | `"corrected"`.
+Default: `"pending"`. When corrected, `text` is replaced with the consultant's
+corrected version and status becomes `"corrected"`.
+
+Only `"validated"` and `"corrected"` interpretations feed into report generation.
+
+### MissionReport
+
+Generated R6 diagnostic report for a mission. Stored in the DB after generation
+so it can be re-displayed without re-running the LLM.
+
+| Field          | Type     | Notes                          |
+|----------------|----------|--------------------------------|
+| `id`           | INT PK   | Autoincrement                  |
+| `mission_id`   | INT FK   | → mission, CASCADE             |
+| `lang`         | TEXT     | `'fr'` or `'en'`               |
+| `text`         | TEXT     | Markdown-formatted report      |
+| `generated_at` | DATETIME |                                |
+
+One report per `(mission_id, lang)` — upserted on each generation.

@@ -178,6 +178,8 @@ All buttons always visible. Disabled state when no capacity is selected:
 | Sauvegarder   | ✓              |                                 |
 | Restaurer     | ✓              |                                 |
 | Créer DOCX    |                | ✓                               |
+| Juger         |                | ✓                               |
+| Missions      | ✓              |                                 |
 
 ### [Nouveau] flow
 1. Open a small creation dialog: select Level, Axis, Pole (3 comboboxes) + enter label (FR, optionally EN)
@@ -194,6 +196,38 @@ All buttons always visible. Disabled state when no capacity is selected:
    - Tabs to include: checkboxes for Fiche / Questions / Coaching
    - Language: fr / en / both
 2. Generate → file save dialog → open file on success
+
+### [Juger] flow
+1. Opens `VerificationWindow` for the currently selected capacity.
+2. Runs 3 parallel LLM evaluations (axioms R6, Halliday, level/pole coherence) via `ai_judge.py`.
+3. Shows per-criterion verdict + aggregate score; user can compare with original content.
+
+### [Missions] flow
+Opens the `MissionApp` window (lazy creation — only one instance at a time).
+
+---
+
+## VerificationWindow (`verification_window.py`)
+
+A `QDialog` that displays the 3-judge LLM evaluation for the selected capacity.
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  Vérification — I1a                             [✕]     │
+├──────────────────────────────────────────────────────────┤
+│  Version  [Original ▾]   / 1                             │
+├─────────────────────┬────────────────────────────────────┤
+│  R6 Axioms          │  verdict + commentary              │
+│  Halliday           │  verdict + commentary              │
+│  Level/pole coher.  │  verdict + commentary              │
+├─────────────────────┴────────────────────────────────────┤
+│  Aggregate verdict:  Satisfaisant                        │
+└──────────────────────────────────────────────────────────┘
+```
+
+- Verdicts: `"pas_bon"` | `"satisfaisant"` | `"tres_bon"`
+- Aggregate is the lowest of the three individual verdicts
+- Uses `ollama.model_judge` from params.yml (separate from the generation model)
 
 ---
 
@@ -237,3 +271,138 @@ EDIT ──[Annuler]──────> READ_ONLY  (discard, reload from DB)
 - Remember last window size and position (`app_settings`)
 - On close: `EditGuard` check
 - Title bar: `R6 Navigator — {capacity_id} {label}` when a capacity is loaded
+
+---
+
+## Missions window (`mission_app.py`, `mission_nav.py`, `mission_detail.py`)
+
+Opened from the main window's [Missions] toolbar button. Lazily created, singleton:
+one `MissionApp` instance is shared across the session.
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│  R6 Navigator — Missions                                      │
+├──────────────────────────────────────────────────────────────┤
+│  [Nouvelle mission] [Nouvel entretien] [Supprimer]            │
+├───────────────────────┬──────────────────────────────────────┤
+│                       │  [ Infos ] [ Verbatim ]              │
+│  ▶ Mission A          │  [ Interprétations ] [ Rapport ]     │
+│      Interviewé 1     │                                      │
+│      Interviewé 2     │  (tab content)                       │
+│  ▶ Mission B          │                                      │
+│      ...              │                                      │
+└───────────────────────┴──────────────────────────────────────┘
+```
+
+`MissionApp(QMainWindow)` receives the `session_factory` from the main app and injects it
+into all child components via `set_session_factory()`.
+
+### MissionNav (`mission_nav.py`)
+
+`QTreeWidget`, fixed left column (~250 px):
+- Two levels: Mission → Interview
+- Click on Mission → `mission_selected = Signal(int)` (mission_id)
+- Click on Interview → `interview_selected = Signal(int)` (interview_id)
+- `refresh()` method reloads tree from DB
+
+### MissionDetailPanel (`mission_detail.py`)
+
+`QTabWidget` with 4 tabs:
+
+| Tab | Class | Loaded when |
+|-----|-------|-------------|
+| Infos | `MissionTabInfo` | Mission or Interview selected |
+| Verbatim | `MissionTabVerbatim` | Interview selected |
+| Interprétations | `MissionTabInterpretations` | Mission or Interview selected |
+| Rapport | `MissionTabRapport` | Mission selected |
+
+- `load_mission(mission_id)` → loads Infos + Interprétations + Rapport; clears Verbatim
+- `load_interview(interview_id)` → loads Infos + Verbatim; Interprétations shows interview-level
+
+---
+
+## Tab: Mission Infos (`mission_tab_info.py`)
+
+Edit mode pattern (same as Fiche/Questions: read-only by default, [Modifier] to edit).
+Two `QGroupBox` sections:
+
+**Mission fields**: name, client, consultant, start_date, objective
+
+**Interview fields** (only visible when an interview is selected):
+subject_name, subject_role, interview_date, level_code (QComboBox: S/O/I), notes
+
+---
+
+## Tab: Verbatim (`mission_tab_verbatim.py`)
+
+```
+┌──────────────────────────────────────────────────────────┐
+│  Verbatim                                                │
+│  ┌────────────────────────────────────────────────────┐  │
+│  │ (verbatim text — read-only by default)             │  │
+│  │                                                    │  │
+│  └────────────────────────────────────────────────────┘  │
+│  [Modifier] [Enregistrer] [Annuler]  [Ouvrir] [Télécharger] [Analyser] │
+├──────────────────────────────────────────────────────────┤
+│  Interprétations                                         │
+│  • [I3b] (82%) Passage text…                            │
+│  • [O2a] (65%) …                                        │
+│  ┌──────────────────────────────────────────────────┐    │
+│  │                             [Sauvegarder extraits]│    │
+│  └──────────────────────────────────────────────────┘    │
+└──────────────────────────────────────────────────────────┘
+```
+
+**Buttons**:
+
+| Button | Action |
+|--------|--------|
+| [Modifier] / [Enregistrer] / [Annuler] | Toggle edit mode for the verbatim text |
+| [Ouvrir un fichier] | Import verbatim from `.txt` / `.md` file (UTF-8); saves immediately |
+| [Télécharger le verbatim] | Export verbatim to `.txt` file via save dialog |
+| [Analyser] | Runs `_AnalyzeWorker(QThread)` → `analyze_verbatim()` → populates extract list |
+| [Sauvegarder les extraits] | Creates `Extract` + `Interpretation(status=pending)` for each result |
+
+The bottom list shows AI-proposed extracts as `[tag] (confidence%) text…`.
+Tooltip on each item shows the full interpretation text.
+[Sauvegarder les extraits] is only enabled after a successful analysis.
+
+---
+
+## Tab: Interprétations (`mission_tab_interpretations.py`)
+
+```
+┌────────────────────────────────────────────────────────────────────┐
+│  Filtre: [Tous ▾]                                                  │
+├──────┬───────────┬────────┬──────────┬──────────┬─────────────────┤
+│ Extrait │ Capacité │ Niveau │ Confiance │ Statut  │ Actions         │
+├──────┴───────────┴────────┴──────────┴──────────┴─────────────────┤
+│ text…  │ I3b      │ insuff.│ 82%       │ pending │ [✓][✗][✏]      │
+│ ...    │ O2a      │ satis. │ 65%       │ valid.  │ [✓][✗][✏]      │
+└────────────────────────────────────────────────────────────────────┘
+```
+
+- Filter combobox: `Tous | En attente | Validés | Rejetés`
+- Per-row action buttons: `[✓ Valider]` `[✗ Rejeter]` `[✏ Corriger]`
+- [Corriger] opens `QInputDialog` for the consultant to enter corrected text;
+  saves with `status="corrected"` and replaces `interp.text`
+- `reload()` is called after each status change
+
+---
+
+## Tab: Rapport (`mission_tab_rapport.py`)
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│  ┌────────────────────────────────────────────────────────────┐  │
+│  │ (report text — read-only, Markdown rendered as plain text) │  │
+│  └────────────────────────────────────────────────────────────┘  │
+│                        [Générer le rapport]  [Exporter le rapport] │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+- [Générer le rapport] → `_ReportWorker(QThread)` → `generate_mission_report()` →
+  saves result to DB via `upsert_mission_report()` → displays in text area
+- [Exporter le rapport] → `QFileDialog` (`.docx`) → `export_mission_report()`
+- Pre-condition check: if no validated interpretations exist, shows warning and
+  blocks generation (uses i18n key `mission.no_validated_interpretations`)

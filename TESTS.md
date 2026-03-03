@@ -2,10 +2,11 @@
 
 ## Framework
 
-- `pytest` with `pytest-fixtures`
+- `pytest`
 - All tests use an **in-memory SQLite DB** (`":memory:"`) via SQLAlchemy
-- No UI tests in v1
+- No UI tests
 - No file system tests for backup (mock `shutil.copy2`)
+- Total: **63 tests** (23 CRUD + 12 export + 28 mission CRUD)
 
 ---
 
@@ -27,6 +28,9 @@ Provides a `session_with_capacities` fixture:
 - Same as `session` but creates **3 synthetic capacities** (one per level, all on axis 1 pole a):
   `S1a`, `O1a`, `I1a` — with a `CapacityTranslation(lang='fr', label='capacity {id}')` for each.
 - Does **not** use real R6 content — tests must not depend on specific labels.
+
+Note: mission CRUD tests use the plain `session` fixture (no capacities needed since
+`Interpretation.capacity_id` is nullable).
 
 ---
 
@@ -100,3 +104,64 @@ Uses the `session` fixture. Capacities are created inline in each test.
 | `test_export_both_languages` | `language='both'` → one file containing FR and EN sections for each capacity |
 | `test_export_empty_fields_no_crash` | No EN translation exists → all fields empty → no exception |
 | `test_make_filename` | `_make_filename()` returns a slug-safe string derived from capacity_id and label |
+
+---
+
+## tests/test_mission_crud.py
+
+Uses the `session` fixture (no capacities seeded).
+`Interpretation.capacity_id` is set to `None` in fixtures since no capacity is available.
+
+### Mission tests
+
+| Test | Description |
+|------|-------------|
+| `test_create_mission` | Creates a mission, verifies all fields stored correctly |
+| `test_get_all_missions` | Returns multiple missions; order is deterministic |
+| `test_get_mission` | Returns correct mission by id |
+| `test_update_mission` | Updates name/client/consultant fields |
+| `test_delete_mission_cascades` | Deleting mission removes linked interview, verbatim, extract, interpretation |
+
+### Interview tests
+
+| Test | Description |
+|------|-------------|
+| `test_create_interview` | Creates interview linked to mission |
+| `test_get_interviews` | Returns all interviews for a mission |
+| `test_update_interview` | Updates subject_name, level_code |
+| `test_delete_interview_cascades` | Deleting interview removes verbatim, extract, interpretation |
+
+### Verbatim tests
+
+| Test | Description |
+|------|-------------|
+| `test_create_verbatim` | Creates verbatim with initial text |
+| `test_update_verbatim` | Updates text field |
+| `test_delete_verbatim_cascades` | Deleting verbatim removes extract, interpretation |
+
+### Extract tests
+
+| Test | Description |
+|------|-------------|
+| `test_create_extract` | Creates extract with tag and display_order |
+| `test_get_extracts_ordered` | Returns extracts sorted by display_order |
+| `test_delete_extract_cascades` | Deleting extract removes interpretation |
+
+### Interpretation tests
+
+| Test | Description |
+|------|-------------|
+| `test_create_interpretation_pending` | Default status is `"pending"` |
+| `test_update_interpretation_validated` | Status transitions to `"validated"` |
+| `test_update_interpretation_rejected` | Status transitions to `"rejected"` |
+| `test_update_interpretation_corrected` | Status → `"corrected"`, text replaced with corrected text |
+| `test_get_all_mission_interpretations` | Traverses full Mission→…→Interpretation chain |
+
+### MissionReport tests
+
+| Test | Description |
+|------|-------------|
+| `test_upsert_mission_report_creates` | First upsert creates a new report row |
+| `test_upsert_mission_report_updates` | Second upsert replaces text, updates generated_at |
+| `test_get_mission_report_by_lang` | Returns correct report for the specified language |
+| `test_get_mission_report_missing` | Returns `None` when no report exists for that lang |
