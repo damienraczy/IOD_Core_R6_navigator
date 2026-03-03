@@ -27,9 +27,9 @@ Each of the 5 bullets in risk_insufficient AND risk_excessive must be grounded i
 
 === FIELD SPECIFICATIONS ===
 
-risk_insufficient: 5 sentences describing observable GENERIC consequences of DEFICIT in the capacity on system. Each bullet must address one structural seed in the order above. Only the consequences of the deficit should be described.
+risk_insufficient: 5 sentences describing observable GENERIC impact of DEFICIT in the capacity on system. Each bullet must address one structural seed in the order above. Only the consequences of the deficit should be described.
 
-risk_excessive: 5 sentences describing observable GENERIC consequences of PATHOLOGICAL OVERUSE in the capacity on system. Each bullet must address one structural seed in the order above. Only the consequences of the excess should be described.
+risk_excessive: 5 sentences describing observable GENERIC impact of PATHOLOGICAL OVERUSE in the capacity on system. Each bullet must address one structural seed in the order above. Only the consequences of the excess should be described.
 
 - Circumstantial Context MUST be generic
 - Each sentence must be less than 20 words

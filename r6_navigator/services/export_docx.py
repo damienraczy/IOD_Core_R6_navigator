@@ -17,10 +17,10 @@ from sqlalchemy.orm import Session
 
 from r6_navigator.services import crud
 
-
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class ExportConfig:
@@ -83,16 +83,16 @@ _LABELS: dict[str, dict[str, str]] = {
 
 _CATEGORY_LABELS: dict[str, dict[str, str]] = {
     "fr": {
-        "OK": "Comportements efficaces",
-        "EXC": "Risque si excessif",
+        "OK": "Efficaces",
+        "EXC": "Excessif",
         "DEP": "Dépasse les attentes",
-        "INS": "Risque si insuffisant",
+        "INS": "Insuffisant",
     },
     "en": {
-        "OK": "Effective behaviors",
-        "EXC": "Excessive risk",
+        "OK": "Effective",
+        "EXC": "Excessive",
         "DEP": "Above expectations",
-        "INS": "Insufficient risk",
+        "INS": "Insufficient",
     },
 }
 
@@ -103,6 +103,7 @@ _CATEGORY_ORDER = ("OK", "DEP", "EXC", "INS")
 # ---------------------------------------------------------------------------
 # Public helpers
 # ---------------------------------------------------------------------------
+
 
 def make_filename(capacity_id: str, label: str, lang: str) -> str:
     """Construit un nom de fichier DOCX depuis l'identifiant, le libellé et la langue.
@@ -125,6 +126,7 @@ def make_filename(capacity_id: str, label: str, lang: str) -> str:
 # Public API
 # ---------------------------------------------------------------------------
 
+
 def export_capacity(capacity_id: str, session: Session, config: ExportConfig) -> Path:
     """Génère un fichier DOCX pour une seule capacité.
 
@@ -139,7 +141,7 @@ def export_capacity(capacity_id: str, session: Session, config: ExportConfig) ->
     Returns:
         Chemin absolu du fichier DOCX généré.
     """
-    doc = Document()
+    doc = Document("std_iod_doc.docx")
     if config.language == "both":
         _add_capacity_to_doc(doc, capacity_id, session, config, lang="fr")
         _add_capacity_to_doc(doc, capacity_id, session, config, lang="en")
@@ -176,7 +178,7 @@ def export_bulk(
             trans = crud.get_capacity_translation(session, capacity_id, lang)
             label = trans.label if trans and trans.label else capacity_id
             filename = make_filename(capacity_id, label, lang)
-            doc = Document()
+            doc = Document("std_iod_doc.docx")
             _add_capacity_to_doc(doc, capacity_id, session, config, lang=lang)
             dest = output_dir / filename
             doc.save(str(dest))
@@ -189,10 +191,11 @@ def export_bulk(
 # Internal helpers
 # ---------------------------------------------------------------------------
 
+
 def _add_bullet_text(doc: Document, value: str) -> None:
     """Convertit une chaîne au format ``"- phrase.\\n"`` en paragraphes Word bullets.
 
-    Chaque ligne commençant par ``-`` devient un paragraphe de style ``List Bullet``.
+    Chaque ligne commençant par ``-`` devient un paragraphe de style ``Bullet``.
     Les lignes vides ou ne commençant pas par ``-`` sont ignorées.
 
     Args:
@@ -208,7 +211,7 @@ def _add_bullet_text(doc: Document, value: str) -> None:
         else:
             continue  # Ignore les lignes sans tiret.
         if text:
-            doc.add_paragraph(text, style="List Bullet")
+            doc.add_paragraph(text, style="Bullet")
 
 
 def _add_capacity_to_doc(
@@ -244,17 +247,17 @@ def _add_capacity_to_doc(
     doc.add_heading(f"{capacity_id} — {label}", level=1)
 
     # ── Tableau de métadonnées (Niveau / Axe / Pôle) ──────────────────────────
-    meta = doc.add_table(rows=3, cols=2)
+    meta = doc.add_table(rows=1, cols=6)
     try:
         meta.style = "Table Grid"
     except KeyError:
         pass
     meta.cell(0, 0).text = labels["level"]
     meta.cell(0, 1).text = capacity.level_code
-    meta.cell(1, 0).text = labels["axis"]
-    meta.cell(1, 1).text = str(capacity.axis_number)
-    meta.cell(2, 0).text = labels["pole"]
-    meta.cell(2, 1).text = capacity.pole_code
+    meta.cell(0, 2).text = labels["axis"]
+    meta.cell(0, 3).text = str(capacity.axis_number)
+    meta.cell(0, 4).text = labels["pole"]
+    meta.cell(0, 5).text = capacity.pole_code
 
     # ── Section Fiche ──────────────────────────────────────────────────────────
     if config.include_fiche and trans:
@@ -266,7 +269,12 @@ def _add_capacity_to_doc(
         # Fonction centrale (texte libre, pas de puces).
         if (trans.central_function or "").strip():
             doc.add_heading(labels["central_function"], level=2)
-            doc.add_paragraph(trans.central_function)
+
+            for line in trans.central_function.splitlines():
+                stripped = line.strip()
+                if stripped.startswith("-"):
+                    stripped = stripped[1:].strip()
+                doc.add_paragraph(stripped)
 
         # Risques (listes à puces).
         for field_name, label_key in [
@@ -296,7 +304,7 @@ def _add_capacity_to_doc(
                     )
                     text = item_trans.text if item_trans else ""
                     if text.strip():
-                        doc.add_paragraph(text, style="List Bullet")
+                        doc.add_paragraph(text, style="Bullet")
 
         # Questions STAR (liste numérotée).
         questions = crud.get_questions(session, capacity_id)
@@ -328,6 +336,7 @@ def _add_capacity_to_doc(
 # Mission report export
 # ---------------------------------------------------------------------------
 
+
 def export_mission_report(
     mission_id: int,
     session_factory,
@@ -356,12 +365,15 @@ def export_mission_report(
             raise ValueError(f"Mission {mission_id} not found")
         report = get_mission_report(session, mission_id, lang)
         if report is None:
-            raise ValueError(f"No report found for mission {mission_id} in lang '{lang}'")
+            raise ValueError(
+                f"No report found for mission {mission_id} in lang '{lang}'"
+            )
 
         mission_name = mission.name
         report_text = report.text
 
-    doc = Document()
+    doc = Document("std_iod_doc.docx")
+
     doc.add_heading(mission_name, level=0)
 
     for line in report_text.splitlines():
@@ -373,7 +385,7 @@ def export_mission_report(
         elif stripped.startswith("# "):
             doc.add_heading(stripped[2:], level=1)
         elif stripped.startswith("- "):
-            doc.add_paragraph(stripped[2:], style="List Bullet")
+            doc.add_paragraph(stripped[2:], style="Bullet")
         elif stripped:
             doc.add_paragraph(_strip_bold_markers(stripped))
 
