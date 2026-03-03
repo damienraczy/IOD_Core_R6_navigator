@@ -22,6 +22,8 @@ from pathlib import Path
 
 import yaml
 
+from r6_navigator.services.prompt import load_prompt
+
 _PACKAGE_DIR = Path(__file__).parent.parent  # r6_navigator/
 _PROJECT_ROOT = _PACKAGE_DIR.parent          # project root
 
@@ -94,8 +96,8 @@ def analyze_verbatim(
     maturity_scale = _load_maturity_scale(level_code)
     level_name = _LEVEL_NAMES.get(level_code, level_code)
 
-    prompt_template = _load_prompt_file("analyze_verbatim")
-    user_prompt = prompt_template.format(
+    user_prompt = load_prompt(
+        "analyze_verbatim",
         subject_name=interview_info.get("subject_name", "N/A"),
         subject_role=interview_info.get("subject_role", "N/A"),
         level_code=level_code,
@@ -172,12 +174,12 @@ def generate_mission_report(
     system_prompt = _load_system_prompt()
 
     lang_name = "French" if lang == "fr" else "US English"
-    prompt_template = _load_prompt_file("generate_mission_report")
-    user_prompt = prompt_template.format(
+    user_prompt = load_prompt(
+        "generate_mission_report",
         mission_name=mission_name,
         client=client,
         consultant=consultant,
-        interview_count=interview_count,
+        interview_count=str(interview_count),
         lang_name=lang_name,
         interpretations_S=_fmt(by_level["S"]),
         interpretations_O=_fmt(by_level["O"]),
@@ -216,21 +218,6 @@ def _load_maturity_scale(level_code: str) -> str:
     except FileNotFoundError:
         return ""
 
-
-def _load_prompt_file(name: str) -> str:
-    """Charge un fichier de prompt depuis ``services/prompt/``.
-
-    Args:
-        name: Nom du prompt sans extension (ex. ``"analyze_verbatim"``).
-
-    Returns:
-        Contenu brut du fichier .txt.
-
-    Raises:
-        FileNotFoundError: Si le fichier est absent.
-    """
-    path = Path(__file__).parent / "prompt" / f"{name}.txt"
-    return path.read_text(encoding="utf-8")
 
 
 def _load_params() -> dict:

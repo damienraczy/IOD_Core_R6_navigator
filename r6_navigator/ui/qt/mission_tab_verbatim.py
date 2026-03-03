@@ -8,8 +8,11 @@ avec un bouton pour les sauvegarder en base (Extract + Interpretation pending).
 
 from __future__ import annotations
 
-from PySide6.QtCore import QThread, Signal
+from pathlib import Path
+
+from PySide6.QtCore import QThread, Signal, Qt
 from PySide6.QtWidgets import (
+    QFileDialog,
     QHBoxLayout,
     QLabel,
     QListWidget,
@@ -21,7 +24,6 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-from PySide6.QtCore import Qt
 
 from r6_navigator.i18n import t
 
@@ -55,6 +57,7 @@ class MissionTabVerbatim(QWidget):
         self._session_factory = None
         self._interview_id: int | None = None
         self._verbatim_id: int | None = None
+        self._subject_name: str = "verbatim"
         self._analyzed_extracts: list = []
         self._worker: _AnalyzeWorker | None = None
         self._editing = False
@@ -90,6 +93,8 @@ class MissionTabVerbatim(QWidget):
         self._btn_edit = QPushButton()
         self._btn_save = QPushButton()
         self._btn_cancel = QPushButton()
+        self._btn_import = QPushButton()
+        self._btn_export = QPushButton()
         self._btn_analyze = QPushButton()
         self._btn_save.setVisible(False)
         self._btn_cancel.setVisible(False)
@@ -98,6 +103,8 @@ class MissionTabVerbatim(QWidget):
         btn_row.addWidget(self._btn_save)
         btn_row.addWidget(self._btn_cancel)
         btn_row.addStretch()
+        btn_row.addWidget(self._btn_import)
+        btn_row.addWidget(self._btn_export)
         btn_row.addWidget(self._btn_analyze)
         top_layout.addLayout(btn_row)
 
@@ -128,6 +135,8 @@ class MissionTabVerbatim(QWidget):
         self._btn_edit.clicked.connect(self._on_edit)
         self._btn_save.clicked.connect(self._on_save)
         self._btn_cancel.clicked.connect(self._on_cancel)
+        self._btn_import.clicked.connect(self._on_import)
+        self._btn_export.clicked.connect(self._on_export)
         self._btn_analyze.clicked.connect(self._on_analyze)
         self._btn_save_extracts.clicked.connect(self._on_save_extracts)
 
@@ -137,6 +146,8 @@ class MissionTabVerbatim(QWidget):
         self._btn_edit.setText(t("btn.edit"))
         self._btn_save.setText(t("btn.save"))
         self._btn_cancel.setText(t("btn.cancel"))
+        self._btn_import.setText(t("mission.btn.import_verbatim"))
+        self._btn_export.setText(t("mission.btn.export_verbatim"))
         self._btn_analyze.setText(t("mission.btn.analyze"))
         self._btn_save_extracts.setText(t("mission.btn.save_extracts"))
 
@@ -159,15 +170,18 @@ class MissionTabVerbatim(QWidget):
     def _load_verbatim(self) -> None:
         if self._session_factory is None or self._interview_id is None:
             return
+        from r6_navigator.db.models import Interview
         from r6_navigator.services.crud_mission import create_verbatim, get_verbatims
         with self._session_factory() as session:
+            iv = session.get(Interview, self._interview_id)
+            if iv:
+                self._subject_name = iv.subject_name or "verbatim"
             verbatims = get_verbatims(session, self._interview_id)
             if verbatims:
                 v = verbatims[0]
                 self._verbatim_id = v.id
                 text = v.text
             else:
-                # Create empty verbatim
                 v = create_verbatim(session, self._interview_id, "")
                 self._verbatim_id = v.id
                 text = ""
@@ -196,6 +210,53 @@ class MissionTabVerbatim(QWidget):
 
     def _on_cancel(self) -> None:
         self._load_verbatim()
+
+    # ── Import ───────────────────────────────────────────────────────
+
+    def _on_import(self) -> None:
+        if self._verbatim_id is None:
+            return
+        path, _ = QFileDialog.getOpenFileName(
+            self,
+            t("mission.btn.import_verbatim"),
+            "",
+            "Text files (*.txt *.md);;All files (*)",
+        )
+        if not path:
+            return
+        try:
+            text = Path(path).read_text(encoding="utf-8")
+        except OSError as exc:
+            QMessageBox.warning(self, t("mission.btn.import_verbatim"), str(exc))
+            return
+        self._text_verbatim.setPlainText(text)
+        from r6_navigator.services.crud_mission import update_verbatim
+        with self._session_factory() as session:
+            update_verbatim(session, self._verbatim_id, text)
+        self._set_readonly(True)
+
+    # ── Export ───────────────────────────────────────────────────────
+
+    def _on_export(self) -> None:
+        text = self._text_verbatim.toPlainText()
+        if not text.strip():
+            QMessageBox.information(self, t("mission.btn.export_verbatim"), t("mission.verbatim_empty"))
+            return
+        safe_name = "".join(c if c.isalnum() or c in " -_" else "_" for c in self._subject_name)
+        default_name = f"{safe_name}_verbatim.txt"
+        path, _ = QFileDialog.getSaveFileName(
+            self,
+            t("mission.btn.export_verbatim"),
+            default_name,
+            "Text files (*.txt);;All files (*)",
+        )
+        if not path:
+            return
+        try:
+            Path(path).write_text(text, encoding="utf-8")
+            QMessageBox.information(self, t("mission.btn.export_verbatim"), t("mission.verbatim_exported").format(path=path))
+        except OSError as exc:
+            QMessageBox.warning(self, t("mission.btn.export_verbatim"), str(exc))
 
     # ── Analyze ──────────────────────────────────────────────────────
 
