@@ -168,11 +168,52 @@ def _migrate_drop_observable_column(engine: Engine) -> None:
 # ---------------------------------------------------------------------------
 
 def _migrate_add_mission_tables(engine: Engine) -> None:
-    """Creates mission-module tables. No-op if already present (create_all handles it)."""
+    """Rebuilds mission tables if they have an incompatible legacy schema.
+
+    The previous schema used ``mission_id`` (string PK); the current schema
+    uses ``id`` (integer PK). If the old schema is detected, all six mission
+    tables are dropped and recreated via ``create_all``.
+    No-op if the current schema is already in place.
+    """
+    _MISSION_TABLES = [
+        "interpretation", "extract", "verbatim", "interview",
+        "mission_report", "mission",
+    ]
+
     with engine.connect() as conn:
-        existing = {row[0] for row in conn.execute(text("SELECT name FROM sqlite_master WHERE type='table'"))}
-    if "mission" in existing:
-        return  # Already created by create_all or previous run
+        existing = {row[0] for row in conn.execute(
+            text("SELECT name FROM sqlite_master WHERE type='table'")
+        )}
+        if "mission" not in existing:
+            return  # create_all already ran — tables were just created
+
+        # Check if the schema is current (has integer `id` column)
+        cols = {row[1] for row in conn.execute(text("PRAGMA table_info(mission)"))}
+        if "id" in cols:
+            return  # Already on new schema — nothing to do
+
+    # Legacy schema detected — drop all mission-related tables and recreate
+    raw = engine.raw_connection()
+    try:
+        cur = raw.cursor()
+        cur.execute("PRAGMA foreign_keys = OFF")
+        for tbl in _MISSION_TABLES:
+            cur.execute(f"DROP TABLE IF EXISTS {tbl}")
+        cur.execute("PRAGMA foreign_keys = ON")
+        raw.commit()
+    except Exception:
+        raw.rollback()
+        raise
+    finally:
+        raw.close()
+
+    # Recreate with current schema
+    from r6_navigator.db.models import Base, Extract, Interpretation, Interview, Mission, MissionReport, Verbatim
+    tables = [
+        Base.metadata.tables[t] for t in
+        ("mission", "interview", "verbatim", "extract", "interpretation", "mission_report")
+    ]
+    Base.metadata.create_all(engine, tables=tables)
 
 
 # ---------------------------------------------------------------------------
