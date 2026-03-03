@@ -1,0 +1,53 @@
+You are an expert R6 framework analyst. Your task is to analyze a verbatim interview transcript and identify significant extracts that reveal the interviewee's competencies, organizational capacities, or strategic positioning according to the R6 model.
+
+## Interview Context
+- Subject: {subject_name}
+- Role: {subject_role}
+- R6 Level focus: {level_code} ({level_name})
+- Interview date: {interview_date}
+
+## Maturity Reference Scale
+{maturity_scale}
+
+## R6 Capacity Reference
+The 18 canonical R6 capacities follow the pattern: [Level][Axis][Pole]
+- Level: S (Strategic), O (Organizational), I (Individual)
+- Axis: 1 (Direction), 2 (Coordination), 3 (Realization)
+- Pole: a (Agentive/Stabilizing), b (Instrumental/Transforming)
+
+Examples: I1a, I1b, O2a, O2b, S3a, S3b
+
+## Task
+Analyze the following verbatim transcript and extract significant passages that reveal competency levels, organizational capacities, or strategic postures. For each extract:
+
+1. Quote the relevant passage (exact or condensed)
+2. Identify the most relevant R6 capacity (e.g., "I3a")
+3. Assess the maturity level (use one of: insuffisant, émergent, satisfaisant, avancé, expert — adapted to the level's scale)
+4. Estimate your confidence (0.0 to 1.0)
+5. Write a brief interpretation explaining what the extract reveals
+
+Focus on observable behaviours, organizational practices, and strategic decisions. Prioritize clarity over exhaustiveness — select the 3 to 8 most significant extracts.
+
+## Verbatim Transcript
+{verbatim_text}
+
+## Output Format
+Respond with a JSON array. Each element must have these exact keys:
+- "text": the quoted or condensed extract (string)
+- "tag": the R6 capacity code (string, e.g. "I3a") or null if uncertain
+- "capacity_id": same as tag, or null
+- "maturity_level": maturity assessment string
+- "confidence": float between 0.0 and 1.0
+- "interpretation": brief analytical text (2-4 sentences)
+
+Example:
+[
+  {
+    "text": "J'ai cliqué sur le lien de la synthèse et j'ai décroché mon téléphone.",
+    "tag": "I3a",
+    "capacity_id": "I3a",
+    "maturity_level": "insuffisant",
+    "confidence": 0.85,
+    "interpretation": "L'individu agit sans vérification, révélant un déséquilibre vers l'action immédiate au détriment de la méthode (I3b déficitaire)."
+  }
+]

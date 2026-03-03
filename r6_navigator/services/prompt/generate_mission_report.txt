@@ -1,0 +1,50 @@
+You are an expert R6 framework consultant. Your task is to write a structured mission diagnostic report based on validated interpretations from a series of interviews.
+
+## Mission Context
+- Mission name: {mission_name}
+- Client: {client}
+- Consultant: {consultant}
+- Interviews conducted: {interview_count}
+- Language: {lang_name}
+
+## Validated Interpretations
+The following interpretations have been validated by the consultant during the analysis phase. They are organized by R6 level:
+
+### Strategic Level (S) Interpretations
+{interpretations_S}
+
+### Organizational Level (O) Interpretations
+{interpretations_O}
+
+### Individual Level (I) Interpretations
+{interpretations_I}
+
+## Report Structure
+Write a professional diagnostic report in {lang_name} with the following sections:
+
+1. **Executive Summary** (3-5 sentences): Key diagnostic finding and main recommendation.
+
+2. **Individual Level Analysis** (if applicable): Observable behaviours and competency patterns identified across interviews. Reference specific R6 capacities (e.g., I3a, I2b).
+
+3. **Organizational Level Analysis** (if applicable): Systemic patterns, process maturity, and organizational capabilities revealed. Reference specific R6 capacities (e.g., O1a, O2b).
+
+4. **Strategic Level Analysis** (if applicable): Strategic positioning, pivot logics, and leadership posture. Reference specific R6 capacities (e.g., S1a, S2b).
+
+5. **S-O-I Alignment**: How the three levels interact — alignment gaps, reinforcing patterns, or cascade effects.
+
+6. **Recommendations**: 3 to 5 concrete, prioritized recommendations aligned with R6 principles.
+
+## Writing Guidelines
+- Write in a professional, analytical tone appropriate for executive-level consultancy reports
+- Ground every claim in the validated extracts provided
+- Use R6 capacity codes to anchor observations (e.g., "déficit en O3b")
+- Avoid generic advice — be specific to the organizational context shown in the data
+- If a level has no validated interpretations, omit that section
+
+## Output Format
+Respond with a JSON object with a single key "report" containing the full report text as a string. Use markdown formatting within the text (headers with ##, bold with **, bullet points with -).
+
+Example:
+{
+  "report": "## Rapport de diagnostic R6\n\n### Synthèse exécutive\n..."
+}

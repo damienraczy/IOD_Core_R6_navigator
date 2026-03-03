@@ -2,6 +2,8 @@
 
 Génère un fichier Word par capacité avec les sections Fiche, Questions et Coaching.
 Le nom de fichier est auto-construit depuis l'identifiant, le libellé et la langue.
+
+Expose également ``export_mission_report`` pour générer un rapport de mission en DOCX.
 """
 
 from __future__ import annotations
@@ -320,3 +322,64 @@ def _add_capacity_to_doc(
                 if value.strip():
                     doc.add_heading(labels[label_key], level=2)
                     _add_bullet_text(doc, value)
+
+
+# ---------------------------------------------------------------------------
+# Mission report export
+# ---------------------------------------------------------------------------
+
+def export_mission_report(
+    mission_id: int,
+    session_factory,
+    output_path: Path,
+    lang: str = "fr",
+) -> None:
+    """Exporte le rapport de mission en DOCX.
+
+    Lit le ``MissionReport`` existant pour ``mission_id`` + ``lang``,
+    puis écrit un document Word à ``output_path``.
+
+    Args:
+        mission_id: Identifiant de la mission.
+        session_factory: Factory de session SQLAlchemy.
+        output_path: Chemin du fichier DOCX à créer.
+        lang: Langue du rapport (``"fr"`` ou ``"en"``).
+
+    Raises:
+        ValueError: Si la mission ou le rapport est introuvable.
+    """
+    from r6_navigator.services.crud_mission import get_mission, get_mission_report
+
+    with session_factory() as session:
+        mission = get_mission(session, mission_id)
+        if mission is None:
+            raise ValueError(f"Mission {mission_id} not found")
+        report = get_mission_report(session, mission_id, lang)
+        if report is None:
+            raise ValueError(f"No report found for mission {mission_id} in lang '{lang}'")
+
+        mission_name = mission.name
+        report_text = report.text
+
+    doc = Document()
+    doc.add_heading(mission_name, level=0)
+
+    for line in report_text.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("## "):
+            doc.add_heading(stripped[3:], level=2)
+        elif stripped.startswith("### "):
+            doc.add_heading(stripped[4:], level=3)
+        elif stripped.startswith("# "):
+            doc.add_heading(stripped[2:], level=1)
+        elif stripped.startswith("- "):
+            doc.add_paragraph(stripped[2:], style="List Bullet")
+        elif stripped:
+            doc.add_paragraph(_strip_bold_markers(stripped))
+
+    doc.save(output_path)
+
+
+def _strip_bold_markers(text: str) -> str:
+    """Retire les marqueurs Markdown **bold** d'un texte."""
+    return re.sub(r"\*\*(.+?)\*\*", r"\1", text)

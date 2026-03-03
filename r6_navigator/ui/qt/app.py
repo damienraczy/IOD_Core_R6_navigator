@@ -127,6 +127,7 @@ class R6NavigatorApp(QMainWindow):
         self._current_capacity: Capacity | None = None
         self._in_edit_mode = False
         self._edit_guard = EditGuard()
+        self._mission_window = None  # lazy MissionApp
 
         self._build_ui()
         self._retranslate()
@@ -237,10 +238,12 @@ class R6NavigatorApp(QMainWindow):
         self.btn_save_db = QPushButton()
         self.btn_restore_db = QPushButton()
         self.btn_export_docx = QPushButton()
+        self.btn_missions = QPushButton()
 
         layout.addWidget(self.btn_save_db)
         layout.addWidget(self.btn_restore_db)
         layout.addWidget(self.btn_export_docx)
+        layout.addWidget(self.btn_missions)
 
         self.btn_new.clicked.connect(self._on_new_capacity)
         self.btn_edit.clicked.connect(self._on_enter_edit)
@@ -250,6 +253,7 @@ class R6NavigatorApp(QMainWindow):
         self.btn_save_db.clicked.connect(self._on_save_db)
         self.btn_restore_db.clicked.connect(self._on_restore_db)
         self.btn_export_docx.clicked.connect(self._on_export_docx)
+        self.btn_missions.clicked.connect(self._on_open_missions)
 
         return toolbar
 
@@ -264,6 +268,7 @@ class R6NavigatorApp(QMainWindow):
         self.btn_save_db.setText(t("btn.save_db"))
         self.btn_restore_db.setText(t("btn.restore_db"))
         self.btn_export_docx.setText(t("btn.export_docx"))
+        self.btn_missions.setText(t("mission.title"))
 
     # ────────────────────────────────────────────────────────
     # Persistance des réglages utilisateur
@@ -701,6 +706,15 @@ class R6NavigatorApp(QMainWindow):
             Chemin absolu vers le fichier ``.db``, ou None si non configuré.
         """
         return self._db_path_value
+
+    def _on_open_missions(self) -> None:
+        """Ouvre (ou remet au premier plan) la fenêtre du module Missions."""
+        from r6_navigator.ui.qt.mission_app import MissionApp
+        if self._mission_window is None:
+            self._mission_window = MissionApp(self._session_factory, parent=None)
+        self._mission_window.show()
+        self._mission_window.raise_()
+        self._mission_window.activateWindow()
 
     # ────────────────────────────────────────────────────────
     # Événements de fenêtre

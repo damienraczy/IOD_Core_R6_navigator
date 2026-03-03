@@ -49,6 +49,7 @@ def init_db(engine: Engine, seed_capacities: bool = True) -> None:
     Base.metadata.create_all(engine)
     _migrate_to_translation_tables(engine)
     _migrate_drop_observable_column(engine)
+    _migrate_add_mission_tables(engine)
     _seed_reference_data(engine)
     if seed_capacities:
         _seed_capacities(engine)
@@ -160,6 +161,18 @@ def _migrate_drop_observable_column(engine: Engine) -> None:
         raise
     finally:
         raw.close()
+
+
+# ---------------------------------------------------------------------------
+# Migration — add mission tables if absent
+# ---------------------------------------------------------------------------
+
+def _migrate_add_mission_tables(engine: Engine) -> None:
+    """Creates mission-module tables. No-op if already present (create_all handles it)."""
+    with engine.connect() as conn:
+        existing = {row[0] for row in conn.execute(text("SELECT name FROM sqlite_master WHERE type='table'"))}
+    if "mission" in existing:
+        return  # Already created by create_all or previous run
 
 
 # ---------------------------------------------------------------------------
