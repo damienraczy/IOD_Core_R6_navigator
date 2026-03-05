@@ -22,7 +22,6 @@ La configuration Ollama (URL, modèle, timeout) provient de ``params.yml``.
 from __future__ import annotations
 
 import json
-import re
 import time
 import urllib.error
 import urllib.request
@@ -31,6 +30,7 @@ from pathlib import Path
 
 import yaml
 
+from r6_navigator.services.llm_json import strip_markdown_json
 from r6_navigator.services.prompt import load_prompt
 
 _PACKAGE_DIR = Path(__file__).parent.parent  # r6_navigator/
@@ -834,67 +834,6 @@ def _call_ollama(url: str, model: str, system: str, prompt: str, timeout: int) -
     raise last_exc
 
 
-def _fix_json_strings(text: str) -> str:
-    """Échappe les sauts de ligne et tabulations littéraux dans les valeurs JSON.
-
-    Les LLM émettent parfois des retours à la ligne bruts à l'intérieur de
-    chaînes JSON, ce qui rend le JSON invalide. Cette fonction parcourt le texte
-    caractère par caractère et remplace les ``\\n`` / ``\\r`` / ``\\t`` nus
-    trouvés à l'intérieur d'une chaîne (entre guillemets non échappés) par
-    leurs équivalents échappés ``\\\\n`` / ``\\\\t``. Les ``\\r`` sont
-    silencieusement supprimés.
-
-    Args:
-        text: Texte JSON brut potentiellement invalide.
-
-    Returns:
-        Texte JSON dont les valeurs chaînes contiennent des séquences
-        d'échappement valides.
-    """
-    result: list[str] = []
-    in_string = False
-    escape_next = False
-    for ch in text:
-        if escape_next:
-            result.append(ch)
-            escape_next = False
-        elif ch == "\\" and in_string:
-            result.append(ch)
-            escape_next = True
-        elif ch == '"':
-            in_string = not in_string
-            result.append(ch)
-        elif in_string and ch == "\n":
-            result.append("\\n")
-        elif in_string and ch == "\r":
-            pass  # discard bare carriage-returns inside strings
-        elif in_string and ch == "\t":
-            result.append("\\t")
-        else:
-            result.append(ch)
-    return "".join(result)
-
-
-def _strip_markdown_json(text: str) -> str:
-    """Supprime l'enveloppe Markdown ``` optionnelle et corrige les newlines nus.
-
-    Certains modèles encapsulent leur réponse JSON dans un bloc ```json…```.
-    Cette fonction extrait le contenu brut si ce bloc est présent, puis
-    délègue à ``_fix_json_strings`` pour normaliser les caractères de contrôle.
-
-    Args:
-        text: Réponse brute du LLM, avec ou sans bloc ```json…```.
-
-    Returns:
-        Texte JSON nettoyé prêt pour ``json.loads()``.
-    """
-    text = text.strip()
-    match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", text)
-    if match:
-        text = match.group(1).strip()
-    return _fix_json_strings(text)
-
-
 def _cap_bullets(value, max_items: int = 5) -> str:
     """Normalise et tronque une valeur LLM en bloc de puces « - phrase.\n ».
 
@@ -962,7 +901,7 @@ def _parse_fiche_response(raw: str, capacity_id: str) -> GeneratedFiche:
     Raises:
         RuntimeError: Si la réponse n'est pas un JSON valide.
     """
-    clean = _strip_markdown_json(raw)
+    clean = strip_markdown_json(raw)
     try:
         data = json.loads(clean)
     except json.JSONDecodeError as e:
@@ -989,7 +928,7 @@ def _parse_risque_response(raw: str) -> GeneratedRisque:
     Raises:
         RuntimeError: Si la réponse n'est pas un JSON valide.
     """
-    clean = _strip_markdown_json(raw)
+    clean = strip_markdown_json(raw)
     try:
         data = json.loads(clean)
     except json.JSONDecodeError as e:
@@ -1016,7 +955,7 @@ def _parse_content_response(raw: str, capacity_id: str) -> GeneratedContent:
     Raises:
         RuntimeError: Si la réponse n'est pas un JSON valide.
     """
-    clean = _strip_markdown_json(raw)
+    clean = strip_markdown_json(raw)
     try:
         data = json.loads(clean)
     except json.JSONDecodeError as e:
@@ -1045,7 +984,7 @@ def _parse_questions_list(raw: str) -> list[str]:
     Raises:
         RuntimeError: Si la réponse n'est pas un JSON valide.
     """
-    clean = _strip_markdown_json(raw)
+    clean = strip_markdown_json(raw)
     try:
         data = json.loads(clean)
     except json.JSONDecodeError as e:
@@ -1079,7 +1018,7 @@ def _parse_items_dict(raw: str, source: dict[str, list[str]]) -> dict[str, list[
     Raises:
         RuntimeError: Si la réponse n'est pas un JSON valide.
     """
-    clean = _strip_markdown_json(raw)
+    clean = strip_markdown_json(raw)
     try:
         data = json.loads(clean)
     except json.JSONDecodeError as e:
@@ -1113,7 +1052,7 @@ def _parse_questions_response(raw: str) -> list[str]:
     Raises:
         RuntimeError: Si la réponse n'est pas un JSON valide.
     """
-    clean = _strip_markdown_json(raw)
+    clean = strip_markdown_json(raw)
     try:
         data = json.loads(clean)
     except json.JSONDecodeError as e:
@@ -1141,7 +1080,7 @@ def _parse_items_response(raw: str) -> dict[str, list[str]]:
     Raises:
         RuntimeError: Si la réponse n'est pas un JSON valide.
     """
-    clean = _strip_markdown_json(raw)
+    clean = strip_markdown_json(raw)
     try:
         data = json.loads(clean)
     except json.JSONDecodeError as e:
@@ -1177,7 +1116,7 @@ def _parse_coaching_response(raw: str) -> GeneratedCoaching:
     Raises:
         RuntimeError: Si la réponse n'est pas un JSON valide.
     """
-    clean = _strip_markdown_json(raw)
+    clean = strip_markdown_json(raw)
     try:
         data = json.loads(clean)
     except json.JSONDecodeError as e:

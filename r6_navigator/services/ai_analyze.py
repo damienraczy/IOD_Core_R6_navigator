@@ -41,6 +41,7 @@ from pathlib import Path
 
 import yaml
 
+from r6_navigator.services.llm_json import strip_markdown_json
 from r6_navigator.services.prompt import load_prompt
 
 # ────────────────────────────────────────────────
@@ -608,17 +609,18 @@ def _parse_extracts_response(raw: str) -> list[AnalyzedExtract]:
             permettent d'extraire un tableau JSON valide, ou si le résultat
             n'est pas une liste après tentatives de dépliage.
     """
+    clean = strip_markdown_json(raw)
     try:
-        data = json.loads(raw)
+        data = json.loads(clean)
     except json.JSONDecodeError:
         # Fallback regex : certains modèles entourent le JSON de texte explicatif.
-        # On tente de localiser le premier tableau JSON dans la réponse brute.
+        # On tente de localiser le premier tableau JSON dans la réponse nettoyée.
         log.warning(
             "Réponse Ollama non JSON à la racine — tentative d'extraction par regex. "
             "Début de la réponse : %.120s…",
-            raw,
+            clean,
         )
-        match = re.search(r"\[.*\]", raw, re.DOTALL)
+        match = re.search(r"\[.*\]", clean, re.DOTALL)
         if match:
             try:
                 data = json.loads(match.group(0))
@@ -627,18 +629,18 @@ def _parse_extracts_response(raw: str) -> list[AnalyzedExtract]:
                 log.error(
                     "Impossible de parser le tableau JSON trouvé par regex : %s. "
                     "Réponse (120 premiers caractères) : %.120s",
-                    e, raw,
+                    e, clean,
                 )
                 raise RuntimeError(
-                    f"Cannot parse extracts response as JSON: {raw[:200]}"
+                    f"Cannot parse extracts response as JSON: {clean[:200]}"
                 ) from e
         else:
             log.error(
                 "Aucun tableau JSON trouvé dans la réponse Ollama. "
                 "Réponse (120 premiers caractères) : %.120s",
-                raw,
+                clean,
             )
-            raise RuntimeError(f"Cannot parse extracts response as JSON: {raw[:200]}")
+            raise RuntimeError(f"Cannot parse extracts response as JSON: {clean[:200]}")
 
     if isinstance(data, dict):
         # Certains modèles encapsulent le tableau sous une clé racine.
@@ -698,8 +700,9 @@ def _parse_report_response(raw: str) -> str:
         ``"report"``, sa valeur est retournée. Sinon, ``raw`` est retourné
         tel quel (dégradation gracieuse).
     """
+    clean = strip_markdown_json(raw)
     try:
-        data = json.loads(raw)
+        data = json.loads(clean)
         if isinstance(data, dict):
             if "report" not in data:
                 log.warning(
@@ -719,6 +722,6 @@ def _parse_report_response(raw: str) -> str:
         log.warning(
             "Réponse Ollama non parseable en JSON pour le rapport (%s) — "
             "la réponse brute est utilisée. Début : %.120s…",
-            e, raw,
+            e, clean,
         )
         return raw

@@ -28,6 +28,7 @@ from pathlib import Path
 import yaml
 
 from r6_navigator.services.ai_generate import _load_halliday_context, _load_system_prompt
+from r6_navigator.services.llm_json import strip_markdown_json
 from r6_navigator.services.prompt import load_prompt
 
 _PACKAGE_DIR = Path(__file__).parent.parent  # r6_navigator/
@@ -390,62 +391,6 @@ def _call_ollama(url: str, model: str, system: str, prompt: str, timeout: int) -
         raise RuntimeError(f"Unexpected Ollama response format: {e}") from e
 
 
-def _fix_json_strings(text: str) -> str:
-    """Échappe les sauts de ligne et tabulations littéraux dans les valeurs JSON.
-
-    Même logique que dans ``ai_generate._fix_json_strings`` : parcours
-    caractère par caractère pour repérer les séquences nues à l'intérieur
-    des chaînes JSON et les remplacer par leurs équivalents échappés.
-
-    Args:
-        text: Texte JSON brut potentiellement invalide.
-
-    Returns:
-        Texte JSON dont les valeurs chaînes contiennent des séquences
-        d'échappement valides.
-    """
-    result: list[str] = []
-    in_string = False
-    escape_next = False
-    for ch in text:
-        if escape_next:
-            result.append(ch)
-            escape_next = False
-        elif ch == "\\" and in_string:
-            result.append(ch)
-            escape_next = True
-        elif ch == '"':
-            in_string = not in_string
-            result.append(ch)
-        elif in_string and ch == "\n":
-            result.append("\\n")
-        elif in_string and ch == "\r":
-            pass
-        elif in_string and ch == "\t":
-            result.append("\\t")
-        else:
-            result.append(ch)
-    return "".join(result)
-
-
-def _strip_markdown_json(text: str) -> str:
-    """Supprime l'enveloppe Markdown ``` optionnelle et corrige les newlines nus.
-
-    Args:
-        text: Réponse brute du LLM, avec ou sans bloc ```json…```.
-
-    Returns:
-        Texte JSON nettoyé prêt pour ``json.loads()``.
-    """
-    import re
-
-    text = text.strip()
-    match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", text)
-    if match:
-        text = match.group(1).strip()
-    return _fix_json_strings(text)
-
-
 def _parse_judge_response(raw: str, judge_name: str) -> SingleJudgeResult:
     """Parse la réponse JSON d'un juge LLM en ``SingleJudgeResult``.
 
@@ -463,7 +408,7 @@ def _parse_judge_response(raw: str, judge_name: str) -> SingleJudgeResult:
     Raises:
         RuntimeError: Si la réponse n'est pas du JSON valide.
     """
-    clean = _strip_markdown_json(raw)
+    clean = strip_markdown_json(raw)
     try:
         data = json.loads(clean)
     except json.JSONDecodeError as e:
