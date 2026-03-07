@@ -50,6 +50,8 @@ def init_db(engine: Engine, seed_capacities: bool = True) -> None:
     _migrate_to_translation_tables(engine)
     _migrate_drop_observable_column(engine)
     _migrate_add_mission_tables(engine)
+    _migrate_add_halliday_columns(engine)
+    _migrate_drop_interview_level_code(engine)
     _seed_reference_data(engine)
     if seed_capacities:
         _seed_capacities(engine)
@@ -214,6 +216,35 @@ def _migrate_add_mission_tables(engine: Engine) -> None:
         ("mission", "interview", "verbatim", "extract", "interpretation", "mission_report")
     ]
     Base.metadata.create_all(engine, tables=tables)
+
+
+# ---------------------------------------------------------------------------
+# Migration — add halliday columns to extract table
+# ---------------------------------------------------------------------------
+
+def _migrate_add_halliday_columns(engine: Engine) -> None:
+    """Adds halliday_note and halliday_ok columns to extract table if absent. No-op if present."""
+    with engine.connect() as conn:
+        cols = {r[1] for r in conn.execute(text("PRAGMA table_info(extract)")).fetchall()}
+        if "halliday_note" not in cols:
+            conn.execute(text("ALTER TABLE extract ADD COLUMN halliday_note TEXT"))
+        if "halliday_ok" not in cols:
+            conn.execute(text("ALTER TABLE extract ADD COLUMN halliday_ok BOOLEAN"))
+        conn.commit()
+
+
+# ---------------------------------------------------------------------------
+# Migration — drop level_code column from interview table
+# ---------------------------------------------------------------------------
+
+def _migrate_drop_interview_level_code(engine: Engine) -> None:
+    """Drops the level_code column from the interview table if present. No-op if absent."""
+    with engine.connect() as conn:
+        cols = {r[1] for r in conn.execute(text("PRAGMA table_info(interview)")).fetchall()}
+        if "level_code" not in cols:
+            return
+        conn.execute(text("ALTER TABLE interview DROP COLUMN level_code"))
+        conn.commit()
 
 
 # ---------------------------------------------------------------------------

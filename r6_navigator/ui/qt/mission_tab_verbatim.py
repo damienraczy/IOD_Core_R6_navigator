@@ -29,10 +29,13 @@ from r6_navigator.i18n import t
 
 
 class _AnalyzeWorker(QThread):
-    """Exécute analyze_verbatim() dans un thread séparé."""
+    """Exécute analyze_verbatim() ou analyze_verbatim_v2() dans un thread séparé."""
 
-    finished = Signal(list)   # list[AnalyzedExtract]
+    finished = Signal(list)            # list[AnalyzedExtract]
     error = Signal(str)
+    progress = Signal(str, int, int)   # (stage_name, completed, total)
+
+    _V2_THRESHOLD = 300  # mots : au-delà, pipeline itératif v2
 
     def __init__(self, verbatim_text: str, interview_info: dict, lang: str) -> None:
         super().__init__()
@@ -42,8 +45,18 @@ class _AnalyzeWorker(QThread):
 
     def run(self) -> None:
         try:
-            from r6_navigator.services.ai_analyze import analyze_verbatim
-            extracts = analyze_verbatim(self._verbatim_text, self._interview_info, self._lang)
+            word_count = len(self._verbatim_text.split())
+            if word_count > self._V2_THRESHOLD:
+                from r6_navigator.i18n import t
+                self.progress.emit(t("mission.analysis.stage_segment"), 0, 3)
+                from r6_navigator.services.ai_analyze_v2 import analyze_verbatim_v2
+                extracts = analyze_verbatim_v2(
+                    self._verbatim_text, self._interview_info, self._lang
+                )
+                self.progress.emit(t("mission.analysis.stage_done"), 3, 3)
+            else:
+                from r6_navigator.services.ai_analyze import analyze_verbatim
+                extracts = analyze_verbatim(self._verbatim_text, self._interview_info, self._lang)
             self.finished.emit(extracts)
         except Exception as exc:
             self.error.emit(str(exc))
@@ -276,7 +289,6 @@ class MissionTabVerbatim(QWidget):
             interview_info = {
                 "subject_name": iv.subject_name,
                 "subject_role": iv.subject_role or "",
-                "level_code": iv.level_code or "I",
                 "interview_date": iv.interview_date or "",
             }
 
@@ -290,6 +302,7 @@ class MissionTabVerbatim(QWidget):
         self._worker = _AnalyzeWorker(verbatim_text, interview_info, current_lang())
         self._worker.finished.connect(self._on_analyze_done)
         self._worker.error.connect(self._on_analyze_error)
+        self._worker.progress.connect(self._on_analysis_progress)
         self._worker.start()
 
     def _on_analyze_done(self, extracts: list) -> None:
@@ -305,6 +318,9 @@ class MissionTabVerbatim(QWidget):
             item.setToolTip(ex.interpretation)
             self._list_extracts.addItem(item)
         self._btn_save_extracts.setEnabled(bool(extracts))
+
+    def _on_analysis_progress(self, stage: str, completed: int, total: int) -> None:
+        self._btn_analyze.setText(f"{stage} ({completed}/{total})")
 
     def _on_analyze_error(self, message: str) -> None:
         self._btn_analyze.setEnabled(True)
@@ -323,6 +339,8 @@ class MissionTabVerbatim(QWidget):
                     text=ex.text,
                     tag=ex.tag,
                     display_order=i,
+                    halliday_ok=getattr(ex, "halliday_ok", None),
+                    halliday_note=getattr(ex, "halliday_note", None),
                 )
                 create_interpretation(
                     session,

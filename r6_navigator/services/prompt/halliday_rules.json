@@ -1,5 +1,5 @@
 {
-  "_comment": "Level-specific Halliday transitivity rules for R6 generation and evaluation. v3: integrated ellipsis recovery and multi-level inversion tests; fixed JSON syntax.",
+  "_comment": "Level-specific Halliday transitivity rules for R6 generation and evaluation. v4: aligned participant terminology with axioms.md (Token for relational-identifying); added intangible environment reference to S interview_target.",
   "I": {
     "interview_target": "Conduct interviews about concrete situations they have personally experienced and acted upon. Target the interviewee's own direct actions and observable behaviours in specific past episodes. Avoid hypothetical or systemic questions.",
     "participant_1": "Actor (a physical individual, a collaborator, a manager, an executive, the 'you' of the interview — someone with a body capable of performing the verb)",
@@ -20,13 +20,13 @@
     "audit_rule_inversion": "Inversion test: if the main participant of a Level O statement can be replaced by a proper noun (e.g. 'John') without making the sentence semantically absurd, the statement likely belongs to Level I and is invalid for Level O."
   },
   "S": {
-    "interview_target": "Conduct interviews about historical strategic decisions, deliberate trade-offs made under uncertainty, and the underlying theories of action that guide the organisation. Explore choices made and the reasoning behind them.",
-    "participant_1": "Senser (the thinking entity: executive leadership, the board, the organisation as a decision-making whole) or Identified (the value proposition, the strategic identity, the ambition).",
+    "interview_target": "Conduct interviews about historical strategic decisions, deliberate trade-offs made under uncertainty, and the underlying theories of action that guide the organisation within its intangible environment (market, competitive dynamics, regulatory framework, technological trends). Explore choices made and the reasoning behind them.",
+    "participant_1": "Token (the value proposition, the strategic identity, the ambition — for relational-identifying processes) or Senser (the thinking entity: executive leadership, the board, the organisation as a decision-making whole — for mental processes).",
     "process_type": "Mental (e.g. decide, prioritise, anticipate, consider, believe) or Relational-identifying (e.g. signify, represent, constitute, define, embody)",
-    "participant_2": "Optional Phenomenon (the object of cognition) or Identifier (what defines the identity). For Identifying processes, the statement must be reversible (A = B).",
-    "circumstance": "Context of the decision (Time Horizon, Competitive Landscape, Uncertainty). The macro-environment or strategic timeframe (e.g. 'in the long term', 'vis-à-vis the competition').",
+    "participant_2": "Optional Phenomenon (the object of cognition, for mental processes) or Value (what defines the identity, for relational-identifying processes). For Identifying processes, the statement must be reversible (A = B).",
+    "circumstance": "Context of the decision (Time Horizon, Competitive Landscape, Uncertainty). The intangible macro-environment or strategic timeframe (e.g. 'in the long term', 'vis-à-vis the competition').",
     "proscription": "Avoid obligation verbs (must, should) which mask an inability to define identity. Avoid operational or systemic process verbs. Prefer relational-identifying processes that express who or what the organisation IS.",
-    "audit_rule_main_clause": "Syntactic analysis strictly applies to the main grammatical clause. For identifying processes (A = B) or mental processes, ensure the elided Senser or Identified is the strategic entity (the organization, the board) and not a specific operator.",
-    "audit_rule_inversion": "Inversion test: if the Senser or Identified can be replaced by a proper noun (e.g. 'John') and the sentence remains a valid description of an individual's opinion or trait, it is likely Level I. Level S statements must describe an institutional stance that would be semantically absurd if applied to a single person."
+    "audit_rule_main_clause": "Syntactic analysis strictly applies to the main grammatical clause. For identifying processes (A = B), ensure the elided Token is the strategic entity (the value proposition, the identity). For mental processes, ensure the elided Senser is the organisation or its leadership, not a specific operator.",
+    "audit_rule_inversion": "Inversion test: if the Token or Senser can be replaced by a proper noun (e.g. 'John') and the sentence remains a valid description of an individual's opinion or trait, it is likely Level I. Level S statements must describe an institutional stance that would be semantically absurd if applied to a single person."
   }
 }

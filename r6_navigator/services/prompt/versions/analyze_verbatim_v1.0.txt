@@ -3,7 +3,11 @@ You are an expert R6 framework analyst. Your task is to analyze a verbatim inter
 ## Interview Context
 - Subject: {subject_name}
 - Role: {subject_role}
+- R6 Level focus: {level_code} ({level_name})
 - Interview date: {interview_date}
+
+## Maturity Reference Scale
+{maturity_scale}
 
 ## R6 Capacity Reference
 The 18 canonical R6 capacities follow the pattern: [Level][Axis][Pole]
@@ -13,23 +17,12 @@ The 18 canonical R6 capacities follow the pattern: [Level][Axis][Pole]
 
 Examples: I1a, I1b, O2a, O2b, S3a, S3b
 
-## Maturity Reference Scales
-
-### Individual level (I) — EQF Proficiency
-{maturity_scale_I}
-
-### Organizational level (O)
-{maturity_scale_O}
-
-### Strategic level (S)
-{maturity_scale_S}
-
 ## Task
 Analyze the following verbatim transcript and extract significant passages that reveal competency levels, organizational capacities, or strategic postures. For each extract:
 
 1. Quote the relevant passage (exact or condensed)
-2. Identify the most relevant R6 capacity (e.g., "I3a") — determine the level (S/O/I) from the linguistic register, not from a preset assumption
-3. Assess the maturity level using the scale corresponding to the identified capacity's level
+2. Identify the most relevant R6 capacity (e.g., "I3a")
+3. Assess the maturity level (use one of: insuffisant, émergent, satisfaisant, avancé, expert — adapted to the level's scale)
 4. Estimate your confidence (0.0 to 1.0)
 5. Write a brief interpretation explaining what the extract reveals
 

@@ -106,6 +106,8 @@ class AnalyzedExtract:
     maturity_level: str
     confidence: float
     interpretation: str
+    halliday_ok: bool | None = None    # Renseigné par analyze_verbatim_v2 uniquement
+    halliday_note: str | None = None   # Justification si halliday_ok is False
 
 
 # ────────────────────────────────────────────────
@@ -119,21 +121,15 @@ def analyze_verbatim(
 ) -> list[AnalyzedExtract]:
     """Analyse un verbatim d'entretien et retourne les extraits significatifs.
 
-    Construit un prompt contextualisé (sujet, rôle, niveau R6, date, échelle
-    de maturité correspondante) puis interroge Ollama pour identifier et
-    interpréter les passages du verbatim pertinents vis-à-vis du modèle R6.
-
-    Le niveau ``level_code`` détermine l'échelle de maturité injectée :
-        - ``"I"`` → EQF Proficiency Levels (individuel)
-        - ``"O"`` → O6 Maturity Levels (organisationnel)
-        - ``"S"`` → S6 Maturity Levels (stratégique)
+    Construit un prompt contextualisé (sujet, rôle, date, et les 3 échelles
+    de maturité) puis interroge Ollama pour identifier et interpréter les
+    passages du verbatim pertinents vis-à-vis du modèle R6. Le niveau est
+    déterminé par le LLM pour chaque extrait à partir du registre linguistique.
 
     Args:
         verbatim_text: Texte brut du verbatim d'entretien à analyser.
         interview_info: Dictionnaire de métadonnées de l'entretien. Clés
-            reconnues : ``subject_name``, ``subject_role``, ``level_code``,
-            ``interview_date``. Toutes sont optionnelles ; ``level_code``
-            vaut ``"I"`` par défaut si absent.
+            reconnues : ``subject_name``, ``subject_role``, ``interview_date``.
         lang: Langue de l'analyse (``"fr"`` ou ``"en"``). Transmis au prompt
             mais le modèle peut répondre dans sa propre langue par défaut.
 
@@ -146,18 +142,11 @@ def analyze_verbatim(
             inaccessible après ``_OLLAMA_MAX_RETRIES`` tentatives, ou si la
             réponse ne contient pas de JSON parseable.
     """
-    log.info("Début d'analyse du verbatim (level_code=%s, lang=%s)",
-             interview_info.get("level_code", "I"), lang)
+    log.info("Début d'analyse du verbatim (lang=%s)", lang)
 
     params = _load_params()
     ollama_cfg = _extract_ollama_cfg(params)
     system_prompt = _load_system_prompt()
-
-    # Résolution du niveau : on récupère le code court et on dérive le nom
-    # complet pour l'injection dans le prompt (ex. "I" → "Individual").
-    level_code = interview_info.get("level_code", "I")
-    maturity_scale = _load_maturity_scale(level_code)
-    level_name = _LEVEL_NAMES.get(level_code, level_code)
 
     # Construction sécurisée du prompt : load_prompt() fait une substitution
     # littérale clé par clé, sans risque de collision avec les accolades JSON
@@ -166,10 +155,10 @@ def analyze_verbatim(
         "analyze_verbatim",
         subject_name=interview_info.get("subject_name", "N/A"),
         subject_role=interview_info.get("subject_role", "N/A"),
-        level_code=level_code,
-        level_name=level_name,
         interview_date=interview_info.get("interview_date", "N/A"),
-        maturity_scale=maturity_scale,
+        maturity_scale_I=_load_maturity_scale("I"),
+        maturity_scale_O=_load_maturity_scale("O"),
+        maturity_scale_S=_load_maturity_scale("S"),
         verbatim_text=verbatim_text,
     )
 
@@ -447,10 +436,11 @@ def _extract_ollama_cfg(params: dict) -> dict:
         raise RuntimeError(
             f"params.yml[ollama] : clé(s) manquante(s) : {', '.join(missing)}"
         )
-
     return {
         "url": cfg["url"],
         "model": cfg["model"],
+        "model_analyze": cfg.get("model_analyze"),
+        "model_judge": cfg.get("model_judge"),
         "timeout": int(cfg.get("timeout", 120)),
     }
 
@@ -704,14 +694,31 @@ def _parse_report_response(raw: str) -> str:
     try:
         data = json.loads(clean)
         if isinstance(data, dict):
-            if "report" not in data:
+            # Clés candidates dans l'ordre de priorité
+            for key in ("report", "rapport", "text", "content", "markdown"):
+                if key in data and isinstance(data[key], str) and data[key].strip():
+                    if key != "report":
+                        log.warning(
+                            "Clé 'report' absente — rapport extrait depuis la clé '%s'.",
+                            key,
+                        )
+                    return str(data[key])
+            # Fallback : plus longue valeur de type str dans le dict
+            str_values = [(k, v) for k, v in data.items() if isinstance(v, str) and v.strip()]
+            if str_values:
+                key, value = max(str_values, key=lambda kv: len(kv[1]))
                 log.warning(
-                    "Réponse JSON valide mais clé 'report' absente — "
-                    "clés disponibles : %s. La réponse brute est utilisée.",
-                    list(data.keys()),
+                    "Aucune clé connue trouvée — rapport extrait depuis la clé '%s' "
+                    "(plus longue valeur str). Clés disponibles : %s.",
+                    key, list(data.keys()),
                 )
-                return raw
-            return str(data["report"])
+                return str(value)
+            log.warning(
+                "Réponse JSON valide mais aucune valeur str exploitable — "
+                "clés disponibles : %s. La réponse brute est utilisée.",
+                list(data.keys()),
+            )
+            return raw
         log.warning(
             "Réponse JSON parseable mais pas un objet dict (type=%s) — "
             "la réponse brute est utilisée.",

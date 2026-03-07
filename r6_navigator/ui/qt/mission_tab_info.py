@@ -8,7 +8,6 @@ rôle, date, niveau R6, notes).
 from __future__ import annotations
 
 from PySide6.QtWidgets import (
-    QComboBox,
     QFormLayout,
     QGroupBox,
     QHBoxLayout,
@@ -102,21 +101,17 @@ class MissionTabInfo(QWidget):
         self._edit_subject = QLineEdit()
         self._edit_role = QLineEdit()
         self._edit_iv_date = QLineEdit()
-        self._combo_level = QComboBox()
-        self._combo_level.addItems(["S", "O", "I"])
         self._edit_notes = QPlainTextEdit()
         self._edit_notes.setMaximumHeight(80)
 
         self._lbl_subject = QLabel()
         self._lbl_role = QLabel()
         self._lbl_iv_date = QLabel()
-        self._lbl_level = QLabel()
         self._lbl_notes = QLabel()
 
         form_iv.addRow(self._lbl_subject, self._edit_subject)
         form_iv.addRow(self._lbl_role, self._edit_role)
         form_iv.addRow(self._lbl_iv_date, self._edit_iv_date)
-        form_iv.addRow(self._lbl_level, self._combo_level)
         form_iv.addRow(self._lbl_notes, self._edit_notes)
 
         # Interview buttons
@@ -159,7 +154,6 @@ class MissionTabInfo(QWidget):
         self._lbl_subject.setText(t("mission.interview.subject"))
         self._lbl_role.setText(t("mission.interview.role"))
         self._lbl_iv_date.setText(t("mission.interview.date"))
-        self._lbl_level.setText(t("mission.interview.level"))
         self._lbl_notes.setText(t("mission.interview.notes"))
         self._btn_edit_iv.setText(t("btn.edit"))
         self._btn_save_iv.setText(t("btn.save"))
@@ -174,7 +168,6 @@ class MissionTabInfo(QWidget):
         for w in (self._edit_subject, self._edit_role, self._edit_iv_date):
             w.setReadOnly(readonly)
         self._edit_notes.setReadOnly(readonly)
-        self._combo_level.setEnabled(not readonly)
 
     # ── Public API ──────────────────────────────────────────────────
 
@@ -223,8 +216,6 @@ class MissionTabInfo(QWidget):
         self._edit_subject.setText(iv.subject_name or "")
         self._edit_role.setText(iv.subject_role or "")
         self._edit_iv_date.setText(iv.interview_date or "")
-        idx = self._combo_level.findText(iv.level_code or "I")
-        self._combo_level.setCurrentIndex(max(0, idx))
         self._edit_notes.setPlainText(iv.notes or "")
         self._set_interview_fields_readonly(True)
         self._btn_save_iv.setVisible(False)
@@ -284,7 +275,6 @@ class MissionTabInfo(QWidget):
                 subject_name=self._edit_subject.text().strip(),
                 subject_role=self._edit_role.text().strip() or None,
                 interview_date=self._edit_iv_date.text().strip() or None,
-                level_code=self._combo_level.currentText(),
                 notes=self._edit_notes.toPlainText().strip() or None,
             )
         self._set_interview_fields_readonly(True)

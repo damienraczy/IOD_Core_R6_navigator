@@ -2,9 +2,12 @@ ollama:
   url: http://localhost:11434
   model: mistral-large-3:675b-cloud
   model_judge: kimi-k2-thinking:cloud
+  model_analyze: mistral-large-3:675b-cloud
   timeout: 120
 reserve:
   mistral-large-3:675b-cloud: C'est le choix prioritaire. Les modèles Mistral possèdent un entraînement natif et très poussé en français et en anglais. La taille massive de ce modèle (675 milliards de paramètres) lui confère une excellente capacité à maintenir des contraintes sémantiques et stylistiques tout au long de la génération sans dériver.
   gemini-3-pro-preview:latest: L'architecture Pro est spécifiquement conçue pour le suivi d'instructions complexes, la logique formelle et le traitement de contextes exigeants. Ses performances bilingues (anglais/français) sont de premier plan pour l'application de règles linguistiques strictes.
   deepseek-v3.2:cloud: Reconnu pour ses capacités de raisonnement logique exceptionnelles. Il est particulièrement efficace lorsqu'il s'agit d'appliquer des règles de formatage ou des grammaires analytiques rigides (comme la transitivité de Halliday).
   kimi-k2-thinking:cloud: pour le jugement, capacité à interpréter les règles, analyser les contextes et donner des verdicts cohérents.
+  qwen3.5:cloud: marche mal
+  glm-5:cloud: marche mal

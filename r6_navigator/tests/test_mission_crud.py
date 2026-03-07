@@ -51,7 +51,7 @@ def mission(session):
 
 @pytest.fixture
 def interview(session, mission):
-    return create_interview(session, mission.id, "Bob Smith", subject_role="Manager", level_code="I")
+    return create_interview(session, mission.id, "Bob Smith", subject_role="Manager")
 
 
 @pytest.fixture
@@ -125,10 +125,10 @@ def test_delete_mission_cascades(session, mission):
 # ---------------------------------------------------------------------------
 
 def test_create_interview(session, mission):
-    iv = create_interview(session, mission.id, "Jane Doe", subject_role="CEO", level_code="S")
+    iv = create_interview(session, mission.id, "Jane Doe", subject_role="CEO")
     assert iv.id is not None
     assert iv.subject_name == "Jane Doe"
-    assert iv.level_code == "S"
+    assert iv.subject_role == "CEO"
 
 
 def test_get_interviews_by_mission(session, mission):
@@ -139,9 +139,8 @@ def test_get_interviews_by_mission(session, mission):
 
 
 def test_update_interview(session, interview):
-    updated = update_interview(session, interview.id, subject_role="Director", level_code="O")
+    updated = update_interview(session, interview.id, subject_role="Director")
     assert updated.subject_role == "Director"
-    assert updated.level_code == "O"
 
 
 def test_delete_interview_cascades(session, interview, verbatim, extract, interpretation):

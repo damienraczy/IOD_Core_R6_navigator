@@ -1,0 +1,10 @@
+Insert the marker ||BREAK|| at every THEMATIC BREAK in the interviewee's speech below.
+
+Rules:
+- ONE BLOCK = ONE theme and ONE register (fact / judgment / projection)
+- Never cut in the middle of a sentence
+- Preserve the exact wording — do not paraphrase, add, or remove words
+- Return only the text with ||BREAK|| markers inserted, nothing else
+
+Text:
+{text}

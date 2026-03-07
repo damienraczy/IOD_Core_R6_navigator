@@ -14,8 +14,8 @@ from PySide6.QtWidgets import (
     QFileDialog,
     QHBoxLayout,
     QMessageBox,
-    QPlainTextEdit,
     QPushButton,
+    QTextEdit,
     QVBoxLayout,
     QWidget,
 )
@@ -74,13 +74,36 @@ class MissionTabRapport(QWidget):
         btn_row.addStretch()
         layout.addLayout(btn_row)
 
-        # Report viewer
-        self._text_report = QPlainTextEdit()
+        # Report viewer — rendu Markdown natif Qt
+        self._text_report = QTextEdit()
         self._text_report.setReadOnly(True)
         layout.addWidget(self._text_report)
 
         self._btn_generate.clicked.connect(self._on_generate)
         self._btn_export.clicked.connect(self._on_export)
+
+    # ── Helpers ─────────────────────────────────────────────────────
+
+    @staticmethod
+    def _clean_report_text(text: str) -> str:
+        """Supprime l'éventuelle enveloppe ```json{...}``` et retourne le Markdown brut."""
+        import json
+        from r6_navigator.services.llm_json import strip_markdown_json
+        cleaned = strip_markdown_json(text)
+        try:
+            data = json.loads(cleaned)
+            if isinstance(data, dict):
+                for key in ("report", "rapport", "text", "content", "markdown"):
+                    if key in data and isinstance(data[key], str) and data[key].strip():
+                        return str(data[key])
+                # Fallback : plus longue valeur str
+                str_values = [(k, v) for k, v in data.items() if isinstance(v, str) and v.strip()]
+                if str_values:
+                    _, value = max(str_values, key=lambda kv: len(kv[1]))
+                    return str(value)
+        except (json.JSONDecodeError, ValueError):
+            pass
+        return cleaned if cleaned.strip() else text
 
     def _retranslate(self) -> None:
         self._btn_generate.setText(t("mission.btn.generate_report"))
@@ -101,9 +124,9 @@ class MissionTabRapport(QWidget):
         with self._session_factory() as session:
             report = get_mission_report(session, self._mission_id, current_lang())
         if report:
-            self._text_report.setPlainText(report.text)
+            self._text_report.setMarkdown(self._clean_report_text(report.text))
         else:
-            self._text_report.setPlainText("")
+            self._text_report.clear()
 
     # ── Generate ────────────────────────────────────────────────────
 
@@ -123,13 +146,15 @@ class MissionTabRapport(QWidget):
         self._btn_generate.setEnabled(True)
         self._btn_generate.setText(t("mission.btn.generate_report"))
 
-        # Save to DB
+        clean_text = self._clean_report_text(report_text)
+
+        # Save to DB — on stocke le Markdown propre (sans enveloppe JSON)
         if self._session_factory is not None and self._mission_id is not None:
             from r6_navigator.services.crud_mission import upsert_mission_report
             with self._session_factory() as session:
-                upsert_mission_report(session, self._mission_id, current_lang(), report_text)
+                upsert_mission_report(session, self._mission_id, current_lang(), clean_text)
 
-        self._text_report.setPlainText(report_text)
+        self._text_report.setMarkdown(clean_text)
 
     def _on_generate_error(self, message: str) -> None:
         self._btn_generate.setEnabled(True)
@@ -141,7 +166,7 @@ class MissionTabRapport(QWidget):
     def _on_export(self) -> None:
         if self._mission_id is None or self._session_factory is None:
             return
-        report_text = self._text_report.toPlainText().strip()
+        report_text = self._text_report.toMarkdown().strip()
         if not report_text:
             QMessageBox.information(self, "", t("mission.no_validated_interpretations"))
             return

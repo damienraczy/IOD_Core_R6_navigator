@@ -1,0 +1,49 @@
+Tu es un expert R6 framework. Analyse chaque bloc sémantique et identifie la capacité R6 la plus pertinente.
+
+## Contexte
+Les 18 capacités R6 couvrent 3 niveaux :
+  {capacities_list}
+
+## Règles Halliday (pour les 3 niveaux)
+
+{halliday_rules}
+
+## Tâche
+Pour chaque bloc, détermine :
+1. La capacité R6 la plus pertinente (ex : "I3a"), ou null si le bloc est trop ambigu
+2. Le niveau détecté selon le registre linguistique du bloc : "S" (Stratégique), "O" (Organisationnel) ou "I" (Individuel)
+   — IMPORTANT : level_code est TOUJOURS obligatoire. Même si capacity_id est null, tu dois déterminer
+   le niveau à partir du registre du texte (sujet grammatical, processus Halliday, portée de l'action).
+3. Si le registre linguistique du bloc est cohérent avec le niveau de la capacité identifiée (halliday_consistent)
+4. Une justification courte (1-2 phrases) expliquant le choix de niveau via les règles Halliday
+
+## Règle de détermination du niveau par le registre
+- Niveau I : sujet individuel ("je", "j'ai", "mon"), processus matériels ou mentaux au singulier, portée personnelle
+- Niveau O : sujet collectif ("nous", "l'équipe", "le service"), processus relationnels, pratiques d'organisation
+- Niveau S : sujet abstrait ou institutionnel ("la direction", "la stratégie", "l'organisation"), processus existentiels ou attributifs à portée systémique
+
+## Format de sortie JSON
+```json
+{
+  "blocks_analysis": [
+    {
+      "block_id": "r1_0",
+      "capacity_id": "I3a",
+      "level_code": "I",
+      "halliday_consistent": true,
+      "halliday_justification": "Sujet individuel 'je' + verbe d'action 'j'ai fait' → Material process, niveau I confirmé."
+    },
+    {
+      "block_id": "r1_1",
+      "capacity_id": null,
+      "level_code": "O",
+      "halliday_consistent": false,
+      "halliday_justification": "Sujet collectif 'nous' + processus relationnel → registre organisationnel O, capacité trop ambiguë pour être identifiée.",
+      "alternative_capacity": "O2a"
+    }
+  ]
+}
+```
+
+## Blocs à analyser
+{blocks_json}

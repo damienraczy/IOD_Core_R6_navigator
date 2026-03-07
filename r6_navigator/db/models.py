@@ -268,7 +268,6 @@ class Interview(Base):
     subject_name: Mapped[str] = mapped_column(Text, nullable=False)
     subject_role: Mapped[str | None] = mapped_column(Text)
     interview_date: Mapped[str | None] = mapped_column(String)  # ISO date string
-    level_code: Mapped[str | None] = mapped_column(String)  # S / O / I
     notes: Mapped[str | None] = mapped_column(Text)
 
     mission: Mapped[Mission] = relationship(back_populates="interviews")
@@ -305,6 +304,8 @@ class Extract(Base):
     text: Mapped[str] = mapped_column(Text, nullable=False)
     tag: Mapped[str | None] = mapped_column(String)  # e.g. "I3b"
     display_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    halliday_note: Mapped[str | None] = mapped_column(Text)
+    halliday_ok: Mapped[bool | None] = mapped_column(Boolean)
 
     verbatim: Mapped[Verbatim] = relationship(back_populates="extracts")
     interpretations: Mapped[list[Interpretation]] = relationship(

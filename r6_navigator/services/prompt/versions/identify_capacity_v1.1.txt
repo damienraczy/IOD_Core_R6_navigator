@@ -1,0 +1,42 @@
+Tu es un expert R6 framework. Analyse chaque bloc sémantique et identifie la capacité R6 la plus pertinente.
+
+## Contexte
+Les 18 capacités R6 couvrent 3 niveaux :
+  {capacities_list}
+
+## Règles Halliday (pour les 3 niveaux)
+
+{halliday_rules}
+
+## Tâche
+Pour chaque bloc, détermine :
+1. La capacité R6 la plus pertinente (ex : "I3a"), ou null si le bloc est trop ambigu
+2. Le niveau détecté selon le registre linguistique du bloc : "S" (Stratégique), "O" (Organisationnel) ou "I" (Individuel)
+3. Si le registre linguistique du bloc est cohérent avec le niveau de la capacité identifiée (halliday_consistent)
+4. Une justification courte (1-2 phrases) expliquant le choix de niveau via les règles Halliday
+
+## Format de sortie JSON
+```json
+{
+  "blocks_analysis": [
+    {
+      "block_id": "r1_0",
+      "capacity_id": "I3a",
+      "level_code": "I",
+      "halliday_consistent": true,
+      "halliday_justification": "Sujet individuel 'je' + verbe d'action 'j'ai fait' → Material process, niveau I confirmé."
+    },
+    {
+      "block_id": "r1_1",
+      "capacity_id": "O2a",
+      "level_code": "O",
+      "halliday_consistent": false,
+      "halliday_justification": "Sujet collectif 'nous' + processus relationnel → registre organisationnel O, mais pratique individuelle décrite.",
+      "alternative_capacity": "I2a"
+    }
+  ]
+}
+```
+
+## Blocs à analyser
+{blocks_json}

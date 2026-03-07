@@ -80,7 +80,6 @@ def create_interview(
     subject_name: str,
     subject_role: str | None = None,
     interview_date: str | None = None,
-    level_code: str | None = None,
     notes: str | None = None,
 ) -> Interview:
     interview = Interview(
@@ -88,7 +87,6 @@ def create_interview(
         subject_name=subject_name,
         subject_role=subject_role,
         interview_date=interview_date,
-        level_code=level_code,
         notes=notes,
     )
     session.add(interview)
@@ -168,12 +166,16 @@ def create_extract(
     text: str,
     tag: str | None = None,
     display_order: int = 0,
+    halliday_ok: bool | None = None,
+    halliday_note: str | None = None,
 ) -> Extract:
     extract = Extract(
         verbatim_id=verbatim_id,
         text=text,
         tag=tag,
         display_order=display_order,
+        halliday_ok=halliday_ok,
+        halliday_note=halliday_note,
     )
     session.add(extract)
     session.commit()
@@ -256,6 +258,39 @@ def delete_interpretation(session: Session, interp_id: int) -> None:
     if interp is not None:
         session.delete(interp)
         session.commit()
+
+
+def delete_all_mission_interpretations(session: Session, mission_id: int) -> int:
+    """Supprime toutes les interprétations d'une mission. Retourne le nombre supprimé."""
+    interps = (
+        session.query(Interpretation)
+        .join(Extract, Interpretation.extract_id == Extract.id)
+        .join(Verbatim, Extract.verbatim_id == Verbatim.id)
+        .join(Interview, Verbatim.interview_id == Interview.id)
+        .filter(Interview.mission_id == mission_id)
+        .all()
+    )
+    count = len(interps)
+    for interp in interps:
+        session.delete(interp)
+    session.commit()
+    return count
+
+
+def delete_interview_interpretations(session: Session, interview_id: int) -> int:
+    """Supprime toutes les interprétations d'un entretien. Retourne le nombre supprimé."""
+    interps = (
+        session.query(Interpretation)
+        .join(Extract, Interpretation.extract_id == Extract.id)
+        .join(Verbatim, Extract.verbatim_id == Verbatim.id)
+        .filter(Verbatim.interview_id == interview_id)
+        .all()
+    )
+    count = len(interps)
+    for interp in interps:
+        session.delete(interp)
+    session.commit()
+    return count
 
 
 # ---------------------------------------------------------------------------
